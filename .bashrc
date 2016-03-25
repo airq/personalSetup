@@ -130,4 +130,7 @@ alias phome='/home/haiming/'
 alias mv='mv -i'
 alias rm='rm -i'
 alias lsl='ls -l'
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+alias flmgrd='ps -A | grep lmgrd'
+alias lmgrd='sudo /public/abaqus/License/lmgrd'
+source /usr/local/intel/composer_xe_2013.1.117/mkl/bin/mklvars.sh intel64 mod lp64
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
