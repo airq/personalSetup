@@ -119,6 +119,7 @@ fi
 # new command defined by ZHM
 alias gc='git clone'
 export github='https://github.com/'
+export mygit='https://github.com/zhmAtSJTU/'
 export GIT_EDITOR=vim
 
 # vim
