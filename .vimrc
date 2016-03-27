@@ -68,8 +68,8 @@ endif
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 """""新文件标题
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-"新建.c,.h,.sh,.java文件，自动插入文件头 
-autocmd BufNewFile *.cpp,*.[ch],*.sh,*.java exec ":call SetTitle()" 
+"新建.c,.h,.sh,.java,.py 文件，自动插入文件头 
+autocmd BufNewFile *.cpp,*.c,*.sh,*.java,*.py,*.f90 exec ":call SetTitle()" 
 ""定义函数SetTitle，自动插入文件头 
 func SetTitle() 
 	"如果文件类型为.sh文件 
@@ -82,13 +82,21 @@ func SetTitle()
 		call append(line(".")+4, "\#########################################################################") 
 		call append(line(".")+5, "\#!/bin/bash") 
 		call append(line(".")+6, "") 
+	elseif &filetype == '.f90'
+		call setline(1, "!*************************************************************************") 
+		call append(line("."), "! File Name: ".expand("%")) 
+		call append(line(".")+1, "! Author: Haiming Zhang") 
+		call append(line(".")+2, "! Mail: hm.zhang@sjtu.edu.cn") 
+		call append(line(".")+3, "! Created Time: ".strftime("%c")) 
+		call append(line(".")+4, "!************************************************************************/") 
+		call append(line(".")+5, "")
 	else 
 		call setline(1, "/*************************************************************************") 
-		call append(line("."), "	> File Name: ".expand("%")) 
-		call append(line(".")+1, "	> Author: Haiming Zhang") 
-		call append(line(".")+2, "	> Mail: hm.zhang@sjtu.edu.cn") 
-		call append(line(".")+3, "	> Created Time: ".strftime("%c")) 
-		call append(line(".")+4, " ************************************************************************/") 
+		call append(line("."), "> File Name: ".expand("%")) 
+		call append(line(".")+1, "> Author: Haiming Zhang") 
+		call append(line(".")+2, "> Mail: hm.zhang@sjtu.edu.cn") 
+		call append(line(".")+3, "> Created Time: ".strftime("%c")) 
+		call append(line(".")+4, "************************************************************************/") 
 		call append(line(".")+5, "")
 	endif
 	if &filetype == 'cpp'
@@ -99,6 +107,11 @@ func SetTitle()
 	if &filetype == 'c'
 		call append(line(".")+6, "#include<stdio.h>")
 		call append(line(".")+7, "")
+	endif
+	if &filetype == 'py'
+		call append(line(".")+6, "#!/usr/bin/env python")
+		call append(line(".")+7, "# -*- coding: UTF-8 no BOM -*-")
+		call append(line(".")+8, "")
 	endif
 	"	if &filetype == 'java'
 	"		call append(line(".")+6,"public class ".expand("%"))
@@ -195,6 +208,8 @@ set nocompatible
 " 语法高亮
 set syntax=on
 set syntax=enable
+" 自动缩进
+""set ai
 " 去掉输入错误的提示声音
 set noeb
 " 在处理未保存或只读文件的时候，弹出确认

@@ -1,0 +1,5 @@
+[user]
+	name = Zhang Haiming
+	email = hm.zhang@sjtu.edu.cn
+[diff]	
+external = git-diff-wrapper.sh
