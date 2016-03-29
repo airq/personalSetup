@@ -2,4 +2,8 @@ let g:netrw_dirhistmax  =10
 let g:netrw_dirhist_cnt =3
 let g:netrw_dirhist_1='/home/haiming/DAMASK/DAMASK/config'
 let g:netrw_dirhist_2='/home/haiming/DAMASK/DAMASK/code/DAMASK/code'
+<<<<<<< HEAD
 let g:netrw_dirhist_3='/home/zhanghm/.vim'
+=======
+let g:netrw_dirhist_3='/home/haiming/DAMASK'
+>>>>>>> 6f134df918df3329e659b8259177d96cf3b4c824
