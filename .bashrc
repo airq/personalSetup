@@ -133,11 +133,16 @@ alias rm='rm -i'
 alias lsl='ls -l'
 alias flmgrd='ps -A | grep lmgrd'
 alias lmgrd='sudo /public/abaqus/License/lmgrd'
-<<<<<<< HEAD
 alias fdisk0='sudo fdisk -l'
-=======
 alias makerm='rm -rf *.mod *.o'
 
->>>>>>> 6f134df918df3329e659b8259177d96cf3b4c824
 source /usr/local/intel/composer_xe_2013.1.117/mkl/bin/mklvars.sh intel64 mod lp64
 export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+
+
+# user defined environment variables
+#export F90=ifort
+export PETSC_ARCH=gfortran
+export PETSC_DIR=/usr/local
+export MKLROOT=/opt/intel/composer_xe_2013.0.079/mkl
+
