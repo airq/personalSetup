@@ -90,7 +90,7 @@ func SetTitle()
 		call append(line(".")+3, " Created Time: ".strftime("%c")) 
 		call append(line(".")+4, "'''") 
 		call append(line(".")+5, "")
-	elseif &filetype == 'f90'
+	elseif &filetype == 'fortran'
 		call setline(1, "!*************************************************************************") 
 		call append(line("."), "! File Name: ".expand("%")) 
 		call append(line(".")+1, "! Author: Haiming Zhang") 
