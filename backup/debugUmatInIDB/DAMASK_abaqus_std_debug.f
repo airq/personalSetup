@@ -1,0 +1,278 @@
+!--------------------------------------------------------------------------------------------------
+!> @details put the included file abaqus_v6.env in either your home or model directory, 
+!> it is a minimum Abaqus environment file  containing all changes necessary to use the 
+!> DAMASK subroutine (see Abaqus documentation for more information on the use of abaqus_v6.env)
+!--------------------------------------------------------------------------------------------------
+
+#ifndef INT
+#define INT 4
+#endif
+
+#ifndef FLOAT
+#define FLOAT 8
+#endif
+
+#define Abaqus
+
+#include "prec.f90"
+
+module DAMASK_interface
+
+implicit none
+character(len=4), dimension(2),  parameter :: INPUTFILEEXTENSION = ['.pes','.inp']
+character(len=4),                parameter :: LOGFILEEXTENSION   =  '.log'
+
+contains
+
+!--------------------------------------------------------------------------------------------------
+!> @brief just reporting 
+!--------------------------------------------------------------------------------------------------
+subroutine DAMASK_interface_init
+ integer, dimension(8) :: &
+   dateAndTime                                                                                      ! type default integer
+ call date_and_time(values = dateAndTime)
+ write(6,'(/,a)') ' <<<+-  DAMASK_abaqus_std  -+>>>'
+ write(6,'(a,2(i2.2,a),i4.4)') ' Date:    ',dateAndTime(3),'/',&
+                                            dateAndTime(2),'/',&
+                                            dateAndTime(1) 
+ write(6,'(a,2(i2.2,a),i2.2)') ' Time:    ',dateAndTime(5),':',&
+                                            dateAndTime(6),':',&
+                                            dateAndTime(7)  
+ write(6,'(/,a)') ' <<<+-  DAMASK_interface init  -+>>>'
+#include "compilation_info.f90"  
+
+end subroutine DAMASK_interface_init
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief using Abaqus/Standard function to get working directory name
+!--------------------------------------------------------------------------------------------------
+character(1024) function getSolverWorkingDirectoryName()
+
+ implicit none
+ integer :: lenOutDir
+
+ getSolverWorkingDirectoryName=''
+ call getoutdir(getSolverWorkingDirectoryName, lenOutDir)
+ getSolverWorkingDirectoryName=trim(getSolverWorkingDirectoryName)//'/'
+ 
+end function getSolverWorkingDirectoryName
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief using Abaqus/Standard function to get solver job name
+!--------------------------------------------------------------------------------------------------
+character(1024) function getSolverJobName()
+ 
+ implicit none
+ integer :: lenJobName
+
+ getSolverJobName=''
+ call getJobName(getSolverJobName, lenJobName)
+
+end function getSolverJobName
+
+end module DAMASK_interface
+
+#include "commercialFEM_fileList.f90"
+
+subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
+                RPL,DDSDDT,DRPLDE,DRPLDT,STRAN,DSTRAN,&
+                TIME,DTIME,TEMP,DTEMP,PREDEF,DPRED,CMNAME,NDI,NSHR,NTENS,&
+                NSTATV,PROPS,NPROPS,COORDS,DROT,PNEWDT,CELENT,&
+                DFGRD0,DFGRD1,NOEL,NPT,KSLAY,KSPT,KSTEP,KINC)
+ use prec, only: &
+   pReal, &
+   pInt
+ use numerics, only: &
+!$ DAMASK_NumThreadsInt, &
+   usePingPong
+ use FEsolving, only: &
+   calcMode, &
+   terminallyIll, &
+   symmetricSolver
+ use math, only: &
+   invnrmMandel
+ use debug, only: &
+   debug_info, &
+   debug_reset, &
+   debug_levelBasic, &
+   debug_level, &
+   debug_abaqus
+ use mesh, only:  &
+   mesh_FEasCP
+ use CPFEM, only: &
+   CPFEM_general, &
+   CPFEM_init_done, &
+   CPFEM_initAll, &
+   CPFEM_CALCRESULTS, &
+   theInc, &
+   theTime, &
+   theDelta, &
+   !lastIncConverged, &
+   !outdatedByNewInc, &
+   !outdatedFFN1, &
+   lastStep
+ use homogenization, only: &
+   materialpoint_sizeResults, &
+   materialpoint_results
+
+ implicit none
+ integer(pInt),                       intent(in) :: &
+   nDi, &                                                                                           !< Number of direct stress components at this point
+   nShr, &                                                                                          !< Number of engineering shear stress components at this point
+   nTens, &                                                                                         !< Size of the stress or strain component array (NDI + NSHR)
+   nStatV, &                                                                                        !< Number of solution-dependent state variables
+   nProps, &                                                                                        !< User-defined number of material constants
+   noEl, &                                                                                          !< element number
+   nPt,&                                                                                            !< integration point number
+   kSlay, &                                                                                         !< layer number (shell elements etc.)
+   kSpt, &                                                                                          !< section point within the current layer
+   kStep, &                                                                                         !< step number
+   kInc                                                                                             !< increment number
+ character(len=80),                   intent(in) :: &
+   cmname                                                                                           !< uses-specified material name, left justified, should not use “ABQ_” as the leading string 
+ real(pReal),                         intent(in) :: &
+   DTIME, &                                                                                         !< Time increment
+   TEMP, &                                                                                          !< Temperature at the start of the increment
+   DTEMP, &                                                                                         !< Increment of temperature
+   CELENT
+ real(pReal), dimension(1),           intent(in) :: & 
+   PREDEF, & 
+   DPRED
+ real(pReal), dimension(2),           intent(in) :: &
+   TIME                                                                                             !< step time (1)/total time (2) at beginning of the current increment
+ real(pReal), dimension(3),           intent(in) :: &
+   COORDS
+ real(pReal), dimension(nTens),       intent(in) :: &
+   STRAN, &                                                                                         !< total strains at beginning of the increment
+   DSTRAN                                                                                           !< strain increments
+ real(pReal), dimension(nProps),      intent(in) :: &
+   PROPS
+ real(pReal), dimension(3,3),         intent(in) :: &
+   DROT, &                                                                                          !< rotation increment matrix
+   DFGRD0, &                                                                                        !< F at beginning of increment
+   DFGRD1                                                                                           !< F at end of increment
+ real(pReal),                         intent(inout) :: &                                                             
+   PNEWDT, &                                                                                        !< ratio of suggested new time increment
+   SSE, &                                                                                           !< specific elastic strain engergy
+   SPD, &                                                                                           !< specific plastic dissipation
+   SCD, &                                                                                           !< specific creep dissipation
+   RPL, &                                                                                           !< volumetric heat generation per unit time at the end of the increment 
+   DRPLDT                                                                                           !< varation of RPL with respect to the temperature
+ real(pReal), dimension(nTens),       intent(inout) :: &
+   STRESS                                                                                           !< stress tensor at the beginning of the increment, needs to be updated
+ real(pReal), dimension(nStatV),      intent(inout) :: &
+   STATEV                                                                                           !< solution-dependent state variables
+ real(pReal), dimension(nTens),       intent(out) :: &
+   DDSDDT, &
+   DRPLDE
+ real(pReal), dimension(nTens,nTens), intent(out) :: &
+   DDSDDE                                                                                           !< Jacobian matrix of the constitutive model
+
+ real(pReal) :: temperature                                                                         ! temp by Abaqus is intent(in)
+ real(pReal), dimension(6) ::   stress_h=0.0_pReal
+ real(pReal), dimension(6,6) :: ddsdde_h=0.0_pReal
+ integer(pInt) :: computationMode, i, cp_en,j
+ logical :: cutBack
+
+!-----------------------------------------------
+! i_debug_loop and print_debug used for debugging in idb, they should be removed when releasing
+ integer(pInt) :: i_debug_loop=0 
+ logical :: print_debug = .true.
+!-----------------------------------------------
+ 
+#ifdef _OPENMP
+ integer :: defaultNumThreadsInt                                                                    !< default value set by Abaqus
+ include "omp_lib.h"
+ defaultNumThreadsInt = omp_get_num_threads()                                                       ! remember number of threads set by Marc
+ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                     ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
+#endif
+
+ cp_en = 1
+ temperature = temp                                                                                 ! temp is intent(in)
+ DDSDDT = 0.0_pReal
+ DRPLDE = 0.0_pReal
+
+ if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0 .and. noel == 1 .and. npt == 1) then
+   write(6,*) 'el',noel,'ip',npt
+   write(6,*) 'got kInc as',kInc
+   write(6,*) 'got dStran',dStran
+   flush(6)
+ endif
+ 
+ computationMode = CPFEM_CALCRESULTS                                                                ! always calc
+   
+ theTime  = time(2)                                                                                 ! record current starting time
+ theDelta = dtime                                                                                   ! record current time increment
+ theInc   = kInc                                                                                    ! record current increment number
+ lastStep = kStep                                                                                   ! record step number
+
+ if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
+   write(6,'(a16,1x,i2,1x,a,i8,a,i8,1x,i5,a)') 'computationMode',computationMode,'(',cp_en,':',noel,npt,')'
+   flush(6)
+ endif
+   
+!-----------------------------------------------
+! i_debug_loop is used for debugging in idb, it should be removed when releasing
+ i_debug_loop=2
+ j=0
+ do while(i_debug_loop .ne. 1)
+   if (print_debug) then
+     write(*,*) "We are debugging the code!, please launch idb and then attach to process!"
+     print_debug = .False.
+   endif
+   j=j+1
+ enddo
+!-----------------------------------------------
+ !*** initialize
+ if (.not. CPFEM_init_done) then
+   call CPFEM_initAll(noel,npt)
+ end if
+
+ call CPFEM_general(computationMode,usePingPong,dfgrd0,dfgrd1,temperature,dtime,noel,npt,stress_h,ddsdde_h)
+
+!     Mandel:              11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
+!     straight:            11, 22, 33, 12, 23, 13
+!     ABAQUS explicit:     11, 22, 33, 12, 23, 13
+!     ABAQUS implicit:     11, 22, 33, 12, 13, 23
+!     ABAQUS implicit:     11, 22, 33, 12
+!     The shear strain is stored as engineering shear strain, gamma_12 = 2 epsilon_12
+
+ forall(i=1:ntens) ddsdde(1:ntens,i) = invnrmMandel(i)*ddsdde_h(1:ntens,i)*invnrmMandel(1:ntens)
+ stress(1:ntens) = stress_h(1:ntens)*invnrmMandel(1:ntens)
+ if(symmetricSolver) ddsdde(1:ntens,1:ntens) = 0.5_pReal*(ddsdde(1:ntens,1:ntens) + transpose(ddsdde(1:ntens,1:ntens)))
+ if(ntens == 6) then
+   stress_h = stress
+   stress(5) = stress_h(6)
+   stress(6) = stress_h(5)
+   ddsdde_h = ddsdde
+   ddsdde(:,5) = ddsdde_h(:,6)
+   ddsdde(:,6) = ddsdde_h(:,5)
+   ddsdde_h = ddsdde
+   ddsdde(5,:) = ddsdde_h(6,:)
+   ddsdde(6,:) = ddsdde_h(5,:)
+ end if
+
+ statev = materialpoint_results(1:min(nstatv,materialpoint_sizeResults),npt,mesh_FEasCP('elem', noel))
+
+ if ( terminallyIll ) pnewdt = 0.5_pReal                                                            ! force cutback directly ?
+!$ call omp_set_num_threads(defaultNumThreadsInt)                                                  ! reset number of threads to stored default value
+
+end subroutine UMAT
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calls the exit function of Abaqus/Standard
+!--------------------------------------------------------------------------------------------------
+subroutine quit(mpie_error)
+ use prec, only: &
+   pInt
+ 
+ implicit none
+ integer(pInt) :: mpie_error
+
+ flush(6)
+ call xit
+
+end subroutine quit

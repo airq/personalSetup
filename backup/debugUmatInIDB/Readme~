@@ -1,0 +1,10 @@
+
+1.using root account to run the script to launch the simulation
+sudo debugCPFEMinIDB.sh Jobname (soft link in /usr/local/bin)
+
+2.using root to launch idb in another terminate
+sudo idb
+
+then
+3.
+File->attach to Process, attach the process standard or explicit

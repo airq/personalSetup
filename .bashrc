@@ -151,3 +151,4 @@ export PETSC_DIR=/usr/local
 export IMKL_ROOT=/opt/intel/composer_xe_2013.0.079/mkl
 
 
+ulimit -c unlimited
