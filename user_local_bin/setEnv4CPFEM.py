@@ -16,7 +16,13 @@ parser.add_option('-r', '--release',
                   dest = 'DEBUG',
                   action = 'store_false',
                   help = 'debug')
+parser.add_option('-c', '--compile',
+                  dest = 'compile',
+                  action = 'store_true',
+                  help = 'compile')
 parser.set_defaults(DEBUG = True)
+parser.set_defaults(compile = False)
+
 options = parser.parse_args()[0]
 
 CPFEM_code_PATH=os.path.join(os.getenv('HOME'), 'CPFEM/reduce')
@@ -39,8 +45,9 @@ for srcFile in os.listdir(srcDir):
         os.remove(file)
     os.symlink(os.path.join(srcDir, srcFile), file)
 
-if options.DEBUG:
-    os.system("make 'DEBUG=ON'")
-else:
-    os.system("abaqus make -lib DAMASK_abaqus_std.f -dir ${CPFEM_LIB_PATH}")
-    os.system("abaqus make -lib DAMASK_abaqus_exp.f -dir ${CPFEM_LIB_PATH}")
+if options.compile:
+    if options.DEBUG:
+        os.system("make 'DEBUG=ON'")
+    else:
+        os.system("abaqus make -lib DAMASK_abaqus_std.f -dir ${CPFEM_LIB_PATH}")
+        os.system("abaqus make -lib DAMASK_abaqus_exp.f -dir ${CPFEM_LIB_PATH}")

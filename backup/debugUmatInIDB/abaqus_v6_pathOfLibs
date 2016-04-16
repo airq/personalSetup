@@ -6,3 +6,5 @@ if os.getenv('USER') != "haiming":
   usub_lib_dir=os.path.join('/home/haiming',libPath)
 else:
   usub_lib_dir=os.path.join(os.getenv('HOME'),libPath)
+
+del libPath

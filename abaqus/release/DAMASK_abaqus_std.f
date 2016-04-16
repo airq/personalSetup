@@ -1,4 +1,9 @@
 !--------------------------------------------------------------------------------------------------
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Koen Janssens, Paul Scherrer Institut
+!> @author Arun Prakash, Fraunhofer IWM
+!> @brief interfaces DAMASK with Abaqus/Standard
 !> @details put the included file abaqus_v6.env in either your home or model directory, 
 !> it is a minimum Abaqus environment file  containing all changes necessary to use the 
 !> DAMASK subroutine (see Abaqus documentation for more information on the use of abaqus_v6.env)
@@ -32,6 +37,7 @@ subroutine DAMASK_interface_init
    dateAndTime                                                                                      ! type default integer
  call date_and_time(values = dateAndTime)
  write(6,'(/,a)') ' <<<+-  DAMASK_abaqus_std  -+>>>'
+ write(6,'(/,a)')              ' Version: '//DAMASKVERSION
  write(6,'(a,2(i2.2,a),i4.4)') ' Date:    ',dateAndTime(3),'/',&
                                             dateAndTime(2),'/',&
                                             dateAndTime(1) 
@@ -100,24 +106,29 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    debug_level, &
    debug_abaqus
  use mesh, only:  &
-   mesh_FEasCP
+   mesh_unitlength, &
+   mesh_FEasCP, &
+   mesh_ipCoordinates
  use CPFEM, only: &
    CPFEM_general, &
    CPFEM_init_done, &
    CPFEM_initAll, &
    CPFEM_CALCRESULTS, &
+   CPFEM_AGERESULTS, &
+   CPFEM_COLLECT, &
+   CPFEM_RESTOREJACOBIAN, &
+   CPFEM_BACKUPJACOBIAN, &
+   cycleCounter, &
    theInc, &
    theTime, &
    theDelta, &
-   !lastIncConverged, &
-   !outdatedByNewInc, &
-   !outdatedFFN1, &
+   lastIncConverged, &
+   outdatedByNewInc, &
+   outdatedFFN1, &
    lastStep
  use homogenization, only: &
    materialpoint_sizeResults, &
    materialpoint_results
- use consts4debug, only: &
-   i_debug_loop                                                       ! i_debug_loop is used for debugging in idb, it should be removed when releasing
 
  implicit none
  integer(pInt),                       intent(in) :: &
@@ -133,17 +144,17 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    kStep, &                                                                                         !< step number
    kInc                                                                                             !< increment number
  character(len=80),                   intent(in) :: &
-   cmname                                                                                           !< uses-specified material name, left justified, should not use “ABQ_” as the leading string 
+   cmname                                                                                           !< uses-specified material name, left justified
  real(pReal),                         intent(in) :: &
-   DTIME, &                                                                                         !< Time increment
-   TEMP, &                                                                                          !< Temperature at the start of the increment
-   DTEMP, &                                                                                         !< Increment of temperature
+   DTIME, &
+   TEMP, &
+   DTEMP, &
    CELENT
  real(pReal), dimension(1),           intent(in) :: & 
    PREDEF, & 
    DPRED
  real(pReal), dimension(2),           intent(in) :: &
-   TIME                                                                                             !< step time (1)/total time (2) at beginning of the current increment
+   TIME                                                                                             !< step time/total time at beginning of the current increment
  real(pReal), dimension(3),           intent(in) :: &
    COORDS
  real(pReal), dimension(nTens),       intent(in) :: &
@@ -175,13 +186,8 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  real(pReal) :: temperature                                                                         ! temp by Abaqus is intent(in)
  real(pReal), dimension(6) ::   stress_h
  real(pReal), dimension(6,6) :: ddsdde_h
- integer(pInt) :: computationMode, i, cp_en,j
+ integer(pInt) :: computationMode, i, cp_en
  logical :: cutBack
-
-!-----------------------------------------------
-! i_debug_loop and print_debug used for debugging in idb, they should be removed when releasing
- logical :: print_debug = .true.
-!-----------------------------------------------
  
 #ifdef _OPENMP
  integer :: defaultNumThreadsInt                                                                    !< default value set by Abaqus
@@ -200,8 +206,82 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    write(6,*) 'got dStran',dStran
    flush(6)
  endif
- 
- computationMode = CPFEM_CALCRESULTS                                                                ! always calc
+
+ if (.not. CPFEM_init_done) call CPFEM_initAll(noel,npt)
+
+ computationMode = 0
+ cp_en = mesh_FEasCP('elem',noel)
+ if (time(2) > theTime .or. kInc /= theInc) then                                                    ! reached convergence
+   terminallyIll = .false.
+   cycleCounter = -1                                                                                ! first calc step increments this to cycle = 0
+   if (kInc == 1) then                                                                              ! >> start of analysis << 
+     lastIncConverged = .false.                                                                     ! no Jacobian backup
+     outdatedByNewInc = .false.                                                                     ! no aging of state
+     calcMode = .false.                                                                             ! pretend last step was collection
+     write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> start of analysis..!';flush(6)
+   else if (kInc - theInc > 1) then                                                                 ! >> restart of broken analysis <<
+     lastIncConverged = .false.                                                                     ! no Jacobian backup
+     outdatedByNewInc = .false.                                                                     ! no aging of state
+     calcMode = .true.                                                                              ! pretend last step was calculation
+     write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> restart of analysis..!';flush(6)
+   else                                                                                             ! >> just the next inc << 
+     lastIncConverged = .true.                                                                      ! request Jacobian backup
+     outdatedByNewInc = .true.                                                                      ! request aging of state
+     calcMode = .true.                                                                              ! assure last step was calculation
+     write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> new increment..!';flush(6)
+   endif
+ else if ( dtime < theDelta ) then                                                                  ! >> cutBack <<
+   lastIncConverged = .false.                                                                       ! no Jacobian backup
+   outdatedByNewInc = .false.                                                                       ! no aging of state
+   terminallyIll = .false.
+   cycleCounter = -1                                                                                ! first calc step increments this to cycle = 0
+   calcMode = .true.                                                                                ! pretend last step was calculation
+   write(6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> cutback detected..!';flush(6)
+ endif                                                                                              ! convergence treatment end
+
+
+ if (usePingPong) then
+   calcMode(npt,cp_en) = .not. calcMode(npt,cp_en)                                                  ! ping pong (calc <--> collect)
+   if (calcMode(npt,cp_en)) then                                                                    ! now --- CALC ---                  
+     computationMode = CPFEM_CALCRESULTS
+     if ( lastStep /= kStep ) then                                                                  ! first after ping pong
+       call debug_reset()                                                                           ! resets debugging
+       outdatedFFN1 = .false.
+       cycleCounter = cycleCounter + 1_pInt
+     endif
+     if(outdatedByNewInc) then
+       computationMode = ior(computationMode,CPFEM_AGERESULTS)                                      ! calc and age results
+       outdatedByNewInc = .false.                                                                   ! reset flag
+     endif
+   else                                                                                             ! now --- COLLECT ---
+     computationMode = CPFEM_COLLECT                                                                ! plain collect
+     if(lastStep /= kStep .and. .not. terminallyIll) &
+       call debug_info()                                                                            ! first after ping pong reports (meaningful) debugging
+     if (lastIncConverged) then
+       computationMode = ior(computationMode,CPFEM_BACKUPJACOBIAN)                                  !  collect and backup Jacobian after convergence
+       lastIncConverged = .false.                                                                   ! reset flag
+     endif
+     mesh_ipCoordinates(1:3,npt,cp_en) = mesh_unitlength * COORDS
+   endif
+ else                                                                                               ! --- PLAIN MODE ---
+   computationMode = CPFEM_CALCRESULTS                                                              ! always calc
+   if (lastStep /= kStep) then
+     if (.not. terminallyIll) &
+       call debug_info()                                                                            ! first reports (meaningful) debugging
+     call debug_reset()                                                                             ! and resets debugging
+     outdatedFFN1  = .false.
+     cycleCounter  = cycleCounter + 1_pInt
+   endif
+   if (outdatedByNewInc) then
+     computationMode = ior(computationMode,CPFEM_AGERESULTS)
+     outdatedByNewInc = .false.                                                                     ! reset flag
+   endif
+   if (lastIncConverged) then
+     computationMode = ior(computationMode,CPFEM_BACKUPJACOBIAN)                                    ! backup Jacobian after convergence
+     lastIncConverged = .false.                                                                     ! reset flag
+   endif
+ endif
+   
    
  theTime  = time(2)                                                                                 ! record current starting time
  theDelta = dtime                                                                                   ! record current time increment
@@ -213,23 +293,6 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    flush(6)
  endif
    
-!-----------------------------------------------
-! i_debug_loop is used for debugging in idb, it should be removed when releasing
- j=0
- do while(i_debug_loop .ne. 1)
-   if (print_debug) then
-     write(*,*) "We are debugging the code!, please launch idb and then attach to process!"
-     print_debug = .False.
-   endif
-   j=j+1
- enddo
- i_debug_loop=1_pInt
-!-----------------------------------------------
- !*** initialize
- if (.not. CPFEM_init_done) then
-   call CPFEM_initAll(noel,npt)
- end if
-
  call CPFEM_general(computationMode,usePingPong,dfgrd0,dfgrd1,temperature,dtime,noel,npt,stress_h,ddsdde_h)
 
 !     Mandel:              11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
@@ -237,7 +300,6 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 !     ABAQUS explicit:     11, 22, 33, 12, 23, 13
 !     ABAQUS implicit:     11, 22, 33, 12, 13, 23
 !     ABAQUS implicit:     11, 22, 33, 12
-!     The shear strain is stored as engineering shear strain, gamma_12 = 2 epsilon_12
 
  forall(i=1:ntens) ddsdde(1:ntens,i) = invnrmMandel(i)*ddsdde_h(1:ntens,i)*invnrmMandel(1:ntens)
  stress(1:ntens) = stress_h(1:ntens)*invnrmMandel(1:ntens)
