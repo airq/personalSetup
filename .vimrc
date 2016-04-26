@@ -15,12 +15,12 @@ set tags=/home/haiming/DAMASK/DAMASK/code/tags
 " setup for pydiction
 let g:pydiction_location='/home/haiming/.vim/bundle/pydiction/complete-dict'
 
-"colorscheme torte
+colorscheme torte
 ""colorscheme murphy
 ""colorscheme desert 
 ""colorscheme elflord""colorscheme ron
 "let g:molokai_original=1
-colorscheme oceandeep
+""colorscheme oceandeep
 
 
 
@@ -332,3 +332,5 @@ let NERDTreeWinPos='left'
 let NERDTreeWinSize=31
 "nnoremap f :NERDTreeToggle
 map <F7> :NERDTree<CR>  
+
+source /home/haiming/.vim/vim4python/vimrc

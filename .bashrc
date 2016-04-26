@@ -152,6 +152,6 @@ export CPFEM_LIB_PATH=/home/haiming/local/lib/cpfem_lib
 export PETSC_ARCH=gfortran
 export PETSC_DIR=/usr/local
 export IMKL_ROOT=/opt/intel/composer_xe_2013.0.079/mkl
-export DAMASK_NUM_THREADS=8
+export DAMASK_NUM_THREADS=4
 
 ulimit -c unlimited

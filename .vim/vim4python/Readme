@@ -1,0 +1,2 @@
+all the files in this dir are copied from Python-2.7.11/Misc/Vim
+ln -sf ~/.vim/vim4python/python.vim ~/.vim/syntax/python.vim

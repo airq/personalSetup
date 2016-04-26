@@ -209,9 +209,19 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    flush(6)
  endif
 
+!-----------------------------------------------
+! i_debug_loop is used for debugging in idb, it should be removed when releasing
+#ifdef _DEBUG
+ j=0
+ do while(i_debug_loop .ne. 1)
+   j=j+1
+ enddo
+ i_debug_loop=1_pInt
+#endif
+
  if (.not. CPFEM_init_done) call CPFEM_initAll(noel,npt)
 
- computationMode = 0
+ computationMode = 0_pInt
  cp_en = mesh_FEasCP('elem',noel)
  if (time(2) > theTime .or. kInc /= theInc) then                                                    ! reached convergence
    terminallyIll = .false.
@@ -295,13 +305,6 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    flush(6)
  endif
    
-!-----------------------------------------------
-! i_debug_loop is used for debugging in idb, it should be removed when releasing
- j=0
- do while(i_debug_loop .ne. 1)
-   j=j+1
- enddo
- i_debug_loop=1_pInt
  call CPFEM_general(computationMode,usePingPong,dfgrd0,dfgrd1,temperature,dtime,noel,npt,stress_h,ddsdde_h)
 
 !     Mandel:              11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13

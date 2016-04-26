@@ -106,12 +106,17 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    CPFEM_init_done, &
    CPFEM_initAll, &
    CPFEM_CALCRESULTS, &
+   CPFEM_AGERESULTS, &
+   CPFEM_COLLECT, &
+!   CPFEM_RESTOREJACOBIAN, &
+!   CPFEM_BACKUPJACOBIAN, &
+   cycleCounter, &
    theInc, &
    theTime, &
    theDelta, &
-   !lastIncConverged, &
-   !outdatedByNewInc, &
-   !outdatedFFN1, &
+!   lastIncConverged, &
+   outdatedByNewInc, &
+   outdatedFFN1, &
    lastStep
  use homogenization, only: &
    materialpoint_sizeResults, &
@@ -177,11 +182,9 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  real(pReal), dimension(6,6) :: ddsdde_h
  integer(pInt) :: computationMode, i, cp_en,j
  logical :: cutBack
-
 !-----------------------------------------------
 ! i_debug_loop and print_debug used for debugging in idb, they should be removed when releasing
  logical :: print_debug = .true.
-!-----------------------------------------------
  
 #ifdef _OPENMP
  integer :: defaultNumThreadsInt                                                                    !< default value set by Abaqus
@@ -200,8 +203,96 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    write(6,*) 'got dStran',dStran
    flush(6)
  endif
- 
- computationMode = CPFEM_CALCRESULTS                                                                ! always calc
+
+!-----------------------------------------------
+! i_debug_loop is used for debugging in idb, it should be removed when releasing
+#ifdef _DEBUG
+ j=0
+ do while(i_debug_loop .ne. 1)
+   if (print_debug) then
+     write(*,*) "We are debugging the code!, please launch idb and then attach to process!"
+     print_debug = .False.
+   endif
+   j=j+1
+ enddo
+ i_debug_loop=1_pInt
+#endif
+
+ !*** initialize
+ if (.not. CPFEM_init_done) call CPFEM_initAll(noel,npt)
+
+ computationMode = 0_pInt
+ cp_en = mesh_FEasCP('elem',noel)
+ if (time(2) > theTime .or. kInc /= theInc) then                                                    ! reached convergence
+   terminallyIll = .false.
+   cycleCounter = -1                                                                                ! first calc step increments this to cycle = 0
+   if (kInc == 1) then                                                                              ! >> start of analysis << 
+!     lastIncConverged = .false.                                                                     ! no Jacobian backup
+     outdatedByNewInc = .false.                                                                     ! no aging of state
+     calcMode = .false.                                                                             ! pretend last step was collection
+     write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> start of analysis..!';flush(6)
+   else if (kInc - theInc > 1) then                                                                 ! >> restart of broken analysis <<
+!     lastIncConverged = .false.                                                                     ! no Jacobian backup
+     outdatedByNewInc = .false.                                                                     ! no aging of state
+     calcMode = .true.                                                                              ! pretend last step was calculation
+     write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> restart of analysis..!';flush(6)
+   else                                                                                             ! >> just the next inc << 
+!     lastIncConverged = .true.                                                                      ! request Jacobian backup
+     outdatedByNewInc = .true.                                                                      ! request aging of state
+     calcMode = .true.                                                                              ! assure last step was calculation
+     write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> new increment..!';flush(6)
+   endif
+ else if ( dtime < theDelta ) then                                                                  ! >> cutBack <<
+!   lastIncConverged = .false.                                                                       ! no Jacobian backup
+   outdatedByNewInc = .false.                                                                       ! no aging of state
+   terminallyIll = .false.
+   cycleCounter = -1                                                                                ! first calc step increments this to cycle = 0
+   calcMode = .true.                                                                                ! pretend last step was calculation
+   write(6,'(i8,1x,i2,1x,a)') noel,npt,'Abaqus << UMAT >> cutback detected, dtime was scaled. !';flush(6)
+ endif                                                                                              ! convergence treatment end
+
+
+ if (usePingPong) then
+   calcMode(npt,cp_en) = .not. calcMode(npt,cp_en)                                                  ! ping pong (calc <--> collect)
+   if (calcMode(npt,cp_en)) then                                                                    ! now --- CALC ---                  
+     computationMode = CPFEM_CALCRESULTS
+     if ( lastStep /= kStep ) then                                                                  ! first after ping pong
+       call debug_reset()                                                                           ! resets debugging
+       outdatedFFN1 = .false.
+       cycleCounter = cycleCounter + 1_pInt
+     endif
+     if(outdatedByNewInc) then
+       computationMode = ior(computationMode,CPFEM_AGERESULTS)                                      ! calc and age results
+       outdatedByNewInc = .false.                                                                   ! reset flag
+     endif
+   else                                                                                             ! now --- COLLECT ---
+     computationMode = CPFEM_COLLECT                                                                ! plain collect
+     if(lastStep /= kStep .and. .not. terminallyIll) &
+       call debug_info()                                                                            ! first after ping pong reports (meaningful) debugging
+!     if (lastIncConverged) then
+!       computationMode = ior(computationMode,CPFEM_BACKUPJACOBIAN)                                  !  collect and backup Jacobian after convergence
+!       lastIncConverged = .false.                                                                   ! reset flag
+!     endif
+   endif
+ else                                                                                               ! --- PLAIN MODE ---
+   computationMode = CPFEM_CALCRESULTS                                                              ! always calc
+   if (lastStep /= kStep) then
+     if (.not. terminallyIll) &
+       call debug_info()                                                                            ! first reports (meaningful) debugging
+     call debug_reset()                                                                             ! and resets debugging
+     outdatedFFN1  = .false.
+     cycleCounter  = cycleCounter + 1_pInt
+   endif
+   if (outdatedByNewInc) then
+     computationMode = ior(computationMode,CPFEM_AGERESULTS)
+     outdatedByNewInc = .false.                                                                     ! reset flag
+   endif
+!   if (lastIncConverged) then
+!     computationMode = ior(computationMode,CPFEM_BACKUPJACOBIAN)                                    ! backup Jacobian after convergence
+!     lastIncConverged = .false.                                                                     ! reset flag
+!   endif
+ endif
+   
    
  theTime  = time(2)                                                                                 ! record current starting time
  theDelta = dtime                                                                                   ! record current time increment
@@ -213,23 +304,6 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    flush(6)
  endif
    
-!-----------------------------------------------
-! i_debug_loop is used for debugging in idb, it should be removed when releasing
- j=0
- do while(i_debug_loop .ne. 1)
-   if (print_debug) then
-     write(*,*) "We are debugging the code!, please launch idb and then attach to process!"
-     print_debug = .False.
-   endif
-   j=j+1
- enddo
- i_debug_loop=1_pInt
-!-----------------------------------------------
- !*** initialize
- if (.not. CPFEM_init_done) then
-   call CPFEM_initAll(noel,npt)
- end if
-
  call CPFEM_general(computationMode,usePingPong,dfgrd0,dfgrd1,temperature,dtime,noel,npt,stress_h,ddsdde_h)
 
 !     Mandel:              11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
