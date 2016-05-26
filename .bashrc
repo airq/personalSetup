@@ -118,6 +118,7 @@ fi
 
 # new command defined by ZHM
 alias gc='git clone'
+export cpfempath=/home/zhanghm/CPFEM
 export github='https://github.com/'
 export mygit='https://github.com/zhmAtSJTU/'
 export GIT_EDITOR=vim
@@ -127,7 +128,7 @@ alias vimr='vim -R'
 alias vimm='vim -M'
 alias st='sudo apt-get'
 #setxkbmap -option ctrl:swapcaps
-alias phome='/home/haiming/'
+alias phome='/home/zhanghm/'
 alias mv='mv -i'
 alias rm='rm -i'
 alias lsl='ls -l'
@@ -135,6 +136,8 @@ alias flmgrd='ps -A | grep lmgrd'
 alias lmgrd='sudo /public/abaqus/License/lmgrd'
 alias fdisk0='sudo fdisk -l'
 alias makerm='rm -rf *.mod *.o'
+alias gitdamask='git clone https://magit1.mpie.de/damask/DAMASK.git'
+#alias grep='grep -n'
 
 source /usr/local/intel/composer_xe_2013.1.117/mkl/bin/mklvars.sh intel64 mod lp64
 ifortPATH=/opt/intel/composer_xe_2013.0.079/compiler
@@ -143,3 +146,18 @@ export PETSC_DIR=/usr/local
 export PETSC_ARCH=gfortran
 source /public/DAMASK/DAMASK_env.sh
 export PATH=$HOME/bin:$PATH
+#source /home/zhanghm/DAMASK/DAMASK/DAMASK_env.sh
+
+
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+export PATH=/home/zhanghm/local/bin:/home/zhanghm/bin:${PATH}
+export CPFEM_LIB_PATH=/home/zhanghm/local/lib/cpfem_lib
+
+# user defined environment variables
+#export F90=ifort
+export PETSC_ARCH=gfortran
+export PETSC_DIR=/usr/local
+export IMKL_ROOT=/opt/intel/composer_xe_2013.0.079/mkl
+export DAMASK_NUM_THREADS=4
+
+ulimit -c unlimited

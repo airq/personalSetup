@@ -1,0 +1,13 @@
+** must use the -O0 optimization (i.e., no optimization) when compiling
+
+
+1.using root account to run the script to launch the simulation
+sudo debugCPFEMinIDB.sh Jobname (soft link in /usr/local/bin)
+
+2.using root to launch idb in another terminate (MUST BE in the same directory of Job)
+sudo -i
+idb
+
+then
+3.
+File->attach to Process, attach the process standard or explicit

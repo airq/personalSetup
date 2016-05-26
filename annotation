@@ -1,0 +1,45 @@
+CMNAME  = 'MATERIAL-1
+   CPFEM_COLLECT         = 2_pInt**0_pInt, &
+   CPFEM_CALCRESULTS     = 2_pInt**1_pInt, &
+   CPFEM_AGERESULTS      = 2_pInt**2_pInt, &
+   CPFEM_BACKUPJACOBIAN  = 2_pInt**3_pInt, &
+   CPFEM_RESTOREJACOBIAN = 2_pInt**4_pInt
+
+
+calcMode
+allocate(calcMode(mesh_maxNips,mesh_NcpElems))
+
+allocate(phaseAt ( i1, i2, i3 ),source=0_pIntd
+if anyone of i1-i3 is zero, then phaseAt won't be allocated
+if i1=1, i2=2, i3=3, then the dimension of phaseAt is (2,3)
+if i1=i2=1, i3=3, then the dimension of phaseAt is (3)
+
+
+ +--------------------------------------------------------+
+ +                        warning                         +
+ +                          35                            +
+ +                                                        +
+ + could not get $DAMASK_NUM_THREADS                      +
+ + BEGIN:      :END                                       +
+ +--------------------------------------------------------+
+
+ delete(only needed in the case of pertubationLoop)
+ crystallite_dPdF0, crystallite_subFe0
+
+    do p = 1_pInt, 0
+      ... 
+   enddo
+skip 1,0
+
+
+first hit
+time(2) = 0  0
+dtime = 0.1
+kint=kstep=1
+
+ STEP  INC ATT SEVERE EQUIL TOTAL  TOTAL      STEP       INC OF       DOF    IF
+               DISCON ITERS ITERS  TIME/    TIME/LPF    TIME/LPF    MONITOR RIKS
+               ITERS               FREQ
+   1     1   1U    0     7     7  0.00       0.00       0.01000   
+   1     1   2     0     3     3  0.00250    0.00250    0.002500  
+ 7 and 3 are the number of calling umat in each inc, 1U means this inc is invalid, there is a cutback to a smaller increment. 

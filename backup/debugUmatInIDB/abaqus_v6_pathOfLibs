@@ -1,0 +1,10 @@
+import os
+
+libPath='local/lib/cpfem_debug'
+libPath='CPFEM/reduce'
+if os.getenv('USER') != "haiming":
+  usub_lib_dir=os.path.join('/home/haiming',libPath)
+else:
+  usub_lib_dir=os.path.join(os.getenv('HOME'),libPath)
+ask_delete=OFF
+del libPath

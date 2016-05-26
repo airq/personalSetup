@@ -1,6 +1,18 @@
 let g:netrw_dirhistmax  =10
+<<<<<<< HEAD
 let g:netrw_dirhist_cnt =4
 let g:netrw_dirhist_1='/home/haiming/DAMASK/DAMASK/config'
 let g:netrw_dirhist_2='/home/haiming/DAMASK/DAMASK/code/DAMASK/code'
 let g:netrw_dirhist_3='/home/haiming/DAMASK'
 let g:netrw_dirhist_4='/public/DAMASK/code'
+=======
+let g:netrw_dirhist_cnt =8
+let g:netrw_dirhist_1='/home/haiming/DAMASK/DAMASK/config'
+let g:netrw_dirhist_2='/home/haiming/DAMASK/DAMASK/code/DAMASK/code'
+let g:netrw_dirhist_3='/home/haiming/DAMASK'
+let g:netrw_dirhist_4='/home/haiming/.idb_13.0_linux_intel64_app/configuration/org.eclipse.core.runtime'
+let g:netrw_dirhist_5='/home/haiming/CPFEM/reduce/debug'
+let g:netrw_dirhist_6='/home/haiming/CPFEM/debug/oneIp'
+let g:netrw_dirhist_7='/home/haiming/CPFEM/debug/oneIp_DISTWIN'
+let g:netrw_dirhist_8='/home/haiming/.setup/.vim/vim4python'
+>>>>>>> d84d4a89de271ad6d6d1fb780314fc1d102c5260

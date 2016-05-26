@@ -55,7 +55,7 @@ if [ ! -z "$PS1" ]; then
   echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   [[ "x$PETSC_DIR"   != "x" ]] && echo "PETSc location     $PETSC_DIR"
   [[ "x$PETSC_ARCH"  != "x" ]] && echo "PETSc architecture $PETSC_ARCH"
-  echo "MSC.Marc/Mentat    $MSC_ROOT"
+  #echo "MSC.Marc/Mentat    $MSC_ROOT"
   echo
   echo -n "heap  size/MiB     "; echo "`ulimit -d`/1024" | bc
   echo -n "stack size/MiB     "; echo "`ulimit -s`/1024" | bc
@@ -67,7 +67,7 @@ export PYTHONPATH=$DAMASK_ROOT/lib:$PYTHONPATH
 for var in BASE STAT SOLVER PROCESSING FREE; do
   unset "${var}"
 done
-for var in DAMASK IMKL ACML LAPACK MSC FFTW HDF5; do
+for var in DAMASK IMKL ACML LAPACK FFTW HDF5; do
   unset "${var}_ROOT"
 done
 
