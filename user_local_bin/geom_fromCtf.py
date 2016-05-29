@@ -28,10 +28,6 @@ Two phases can be discriminated based on threshold value in a given data column.
 
 """, version = scriptID)
 
-parser.add_option('--column',              dest='column', type='int', metavar = 'int',
-                  help='data column to discriminate between both phases [%default]')
-parser.add_option('-t','--threshold',      dest='threshold', type='float', metavar = 'float',
-                  help='threshold value for phase discrimination [%default]')
 parser.add_option('--homogenization',      dest='homogenization', type='int', metavar = 'int',
                   help='homogenization index for <microstructure> configuration [%default]')
 parser.add_option('--phase',               dest='phase', type='int', nargs = 2, metavar = 'int int',
@@ -45,8 +41,7 @@ parser.add_option('-a', '--axes',         dest='axes', nargs = 3, metavar = 'str
 parser.add_option('-p', '--precision',    dest='precision', choices=['0','1','2','3'], metavar = 'int',
                   help = 'euler angles decimal places for output format and compressing (0,1,2,3) [2]')
 
-parser.set_defaults(column         = 1,
-                    threshold      = 1.5,
+parser.set_defaults(
                     homogenization = 1,
                     phase          = [1,2],
                     crystallite    = 1,
@@ -100,18 +95,16 @@ for name in filenames:
         annotationSkip = True
 
     if annotationSkip:
-      print words
       currPos = words[1:3]
-      print words
-      print currPos
       for i in xrange(2):
         coords[i][currPos[i]] = True
       currPos = map(float,currPos)
       for i in xrange(2):
         pos['min'][i] = min(pos['min'][i],currPos[i])
         pos['max'][i] = max(pos['max'][i],currPos[i])
+
       eulerangles.append(map(float,words[5:8]))
-      phase.append(options.phase[int(float(words[options.column-1]) > options.threshold)])
+      phase.append(map(int, words[0]))
 
   if errors  != []:
     damask.util.croak(errors)
@@ -167,7 +160,7 @@ for name in filenames:
   outStringAngles='(gauss) phi1 '+eulerFormatOut+' Phi '+eulerFormatOut+' phi2 '+eulerFormatOut+' scatter 0.0 fraction 1.0'
   for i in xrange(len(texture)):
     textureOut +=       ['[Texture%s]'%str(i+1).zfill(formatOut),
-                          'axes %s %s %s'%(options.axes[0],options.axes[1],options.axes[2]),
+                          #'axes %s %s %s'%(options.axes[0],options.axes[1],options.axes[2]),
                           outStringAngles%tuple(eulerangles[texture[i],...])
                          ]
   formatOut = 1+int(math.log10(len(microstructure)))

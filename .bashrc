@@ -118,7 +118,7 @@ fi
 
 # new command defined by ZHM
 alias gc='git clone'
-export cpfempath=/home/zhanghm/CPFEM
+export cpfempath=/home/haiming/CPFEM
 export github='https://github.com/'
 export mygit='https://github.com/zhmAtSJTU/'
 export GIT_EDITOR=vim
@@ -128,7 +128,7 @@ alias vimr='vim -R'
 alias vimm='vim -M'
 alias st='sudo apt-get'
 #setxkbmap -option ctrl:swapcaps
-alias phome='/home/zhanghm/'
+alias phome='/home/haiming/'
 alias mv='mv -i'
 alias rm='rm -i'
 alias lsl='ls -l'
@@ -144,14 +144,14 @@ ifortPATH=/opt/intel/composer_xe_2013.0.079/compiler
 export LD_LIBRARY_PATH=$ifortPATH/lib/intel64:/usr/local/lib:$LD_LIBRARY_PATH
 export PETSC_DIR=/usr/local
 export PETSC_ARCH=gfortran
-source /public/DAMASK/DAMASK_env.sh
+#source ~/DAMASK/DAMASK/DAMASK_env.sh
 export PATH=$HOME/bin:$PATH
-#source /home/zhanghm/DAMASK/DAMASK/DAMASK_env.sh
+source /home/haiming/DAMASK/DAMASK/DAMASK_env.sh
 
 
 export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-export PATH=/home/zhanghm/local/bin:/home/zhanghm/bin:${PATH}
-export CPFEM_LIB_PATH=/home/zhanghm/local/lib/cpfem_lib
+export PATH=/home/haiming/local/bin:/home/haiming/bin:${PATH}
+export CPFEM_LIB_PATH=/home/haiming/local/lib/cpfem_lib
 
 # user defined environment variables
 #export F90=ifort
