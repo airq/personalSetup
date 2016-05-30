@@ -53,18 +53,19 @@ else:
             recordMat = False
             newHeader = 0
             for i,line in enumerate(content):
-                if line.split()[0] == '<microstructure>':
-                    recordMat = True
-                    newHeader = i
-                elif allIsDigit(line) or 'to' in line:
-                    recordMat = False
-                elif line.split()[0] == 'microstructures':
-                    nOrientation = line.split()[1]
+                if line:
+                    if line.split()[0] == '<microstructure>':
+                        recordMat = True
+                        newHeader = i
+                    elif allIsDigit(line) or 'to' in line:
+                        recordMat = False
+                    elif line.split()[0] == 'microstructures':
+                        nOrientation = line.split()[1]
 
-                if recordMat:
-                    matcontent.append(line)
-                else:
-                    if i > 0: geomcontent.append(line)
+                    if recordMat:
+                        matcontent.append(line)
+                    else:
+                        if i > 0: geomcontent.append(line)
 
             geomOpen = open(os.path.splitext(filename)[0]+'_rmMat.geom', 'w') if options.newGeomFile else open(filename, 'w')
             matOpen  = open(os.path.splitext(filename)[0]+'_mat.config', 'w') 

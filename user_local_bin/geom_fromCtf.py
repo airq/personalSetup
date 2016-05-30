@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
+'''
+ Author: Haiming Zhang
+ Mail: hm.zhang@sjtu.edu.cn
+ Created Time: 2016年05月28日 星期六 15时47分28秒
+'''
 
 import os,sys,math
 import numpy as np
@@ -34,20 +39,23 @@ parser.add_option('--phase',               dest='phase', type='int', nargs = 2, 
                   help='phase indices for <microstructure> configuration %default')
 parser.add_option('--crystallite',         dest='crystallite', type='int', metavar = 'int',
                   help='crystallite index for <microstructure> configuration [%default]')
+parser.add_option('-e','--enlarge',         dest='enlarge', type='int', metavar = 'int',
+                  help='enlarge the resolution [%default]')
 parser.add_option('-c','--compress',            dest='compress', action='store_true',
                   help='lump identical microstructure and texture information [%default]')
 parser.add_option('-a', '--axes',         dest='axes', nargs = 3, metavar = 'string string string',
                   help='Euler angle coordinate system for <texture> configuration x,y,z = %default')
-parser.add_option('-p', '--precision',    dest='precision', choices=['0','1','2','3'], metavar = 'int',
-                  help = 'euler angles decimal places for output format and compressing (0,1,2,3) [2]')
+parser.add_option('-p', '--precision',    dest='precision', choices=['0','1','2','3','4'], metavar = 'int',
+                  help = 'euler angles decimal places for output format and compressing (0,1,2,3,4) [3]')
 
 parser.set_defaults(
                     homogenization = 1,
                     phase          = [1,2],
                     crystallite    = 1,
+                    enlarge        = 1,
                     compress       = False,
                     axes           = ['y','x','-z'],
-                    precision      = '2',
+                    precision      = '3',
                  )
 (options,filenames) = parser.parse_args()
 
@@ -112,6 +120,7 @@ for name in filenames:
 
 # --------------- determine size and grid ---------------------------------------------------------
   info['grid'] = np.array(map(len,coords),'i')
+  grid0 = np.array(map(len,coords),'i')
   info['size'][0:2] = info['grid'][0:2]/(info['grid'][0:2]-1.0)* \
                                         np.array([pos['max'][0]-pos['min'][0],
                                                   pos['max'][1]-pos['min'][1]],'d')
@@ -173,6 +182,7 @@ for name in filenames:
 
   info['microstructures'] = len(microstructure)
 
+  info['size'][0:2] = options.enlarge*info['size'][0:2]; info['grid'][0:2] = options.enlarge*info['grid'][0:2]
 #--- report ---------------------------------------------------------------------------------------
   damask.util.croak('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) +
               'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) +
@@ -205,7 +215,13 @@ for name in filenames:
     table.data = matPoints
     table.data_writeArray('%%%ii'%(1+int(math.log10(np.amax(matPoints)))),delimiter=' ')
   else:
-    table.output_write("1 to %i\n"%(info['microstructures']))
+    if options.enlarge == 1:
+        table.output_write("1 to %i\n"%(info['microstructures']))
+    else:
+        for irow in xrange(grid0[1]):
+            grain0 = irow*grid0[0] + 1
+            for i in xrange(options.enlarge):
+                table.output_write( ''.join( [ (str(jcol + grain0)+' ')*options.enlarge for jcol in xrange( grid0[0] ) ] ) )
   table.output_flush()
 
 # --- output finalization --------------------------------------------------------------------------
