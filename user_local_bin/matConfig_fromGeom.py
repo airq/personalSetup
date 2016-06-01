@@ -31,6 +31,7 @@ parser.set_defaults(
 if filenames == []: filenames = [None]
 
 for filename in filenames:
+    print 'process file %s by %s'%(filename, scriptName)
     if os.path.exists(filename):
         geomopen =  open(filename, 'r')
         date = geomopen.readlines()

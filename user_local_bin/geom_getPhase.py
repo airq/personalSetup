@@ -9,9 +9,10 @@
 from optparse import OptionParser
 import os,sys,math,re,random,string
 import numpy as np
+from myLibs import mapCoordCrystalNo, allIsDigit
 
-def allIsDigit(line):
-    return all(i.isdigit() for i in line.split())
+
+scriptName = os.path.splitext(os.path.basename(__file__))[0]
 
 def getMicroInfo(fopen):
     ''' this subroutine deals with the .geom file or material.config file '''
@@ -26,35 +27,6 @@ def getMicroInfo(fopen):
         line = fopen.readline()
     return mapGrain2Phase 
 
-
-def mapCoordCrystalNo(fopen):
-    '''
-    this subroutine deals with the .geom file, get the grain No of each grid.
-    fopen is the read object of the .geom file, 
-    surfPlot is the surface in which the orientation, x, y, or z
-    sliceNo is the No. of slice will be along the normal of surfPlot
-    will be plot.
-    '''
-
-    line = fopen.readline()
-    geomInfo = {}
-    mapCrystalNo = []
-    while line:
-        if not line.strip() == '':        # non empty line
-            texts = line.split()
-
-            if texts[0] in ['grid', 'size', 'origin']: 
-                geomInfo[texts[0]] = [ texts[2], texts[4], texts[6] ]
-            elif texts[0] in [ 'homogenization', 'microstructures']: 
-                geomInfo[texts[0]] = texts[1]
-            elif all(i.isdigit() for i in texts):
-                mapCrystalNo.append( [ i for i in texts ] )
-            elif '1 to ' in line:
-                for irow in xrange(int(geomInfo['grid'][1])):
-                    mapCrystalNo.append( [str(irow*int(geomInfo['grid'][0]) + jcol + 1) for jcol in xrange(int(geomInfo['grid'][0])) ] )
-
-        line = fopen.readline()
-    return geomInfo, mapCrystalNo
 
 
 
@@ -80,6 +52,7 @@ if filenames == []:
     print 'missing the .geom file, please specify a geom file!'
 else:
     for filename in filenames:
+        print 'process file %s by %s'%(filename, scriptName)
         if os.path.exists(filename):
             if options.microfile == 'None':
                 fopen = open(filename, 'r')
@@ -94,7 +67,7 @@ else:
             fopen.close()
 
             fopen = open(filename, 'r')
-            geomInfo, mapCrystalNo  = mapCoordCrystalNo(fopen)
+            geomInfo, mapCrystalNo  = mapCoordCrystalNo(fopen, [2,4,6])
             fopen.close()
 
             nOrientations = int(geomInfo['microstructures'])
@@ -104,9 +77,10 @@ else:
                 print 'The number of <microstructure> is %s'%len(mapGrain2Phase)
                 exit()
 
+
             for irow in xrange(len(mapCrystalNo)):
                 for jcol in xrange(len(mapCrystalNo[irow])):
-                    mapCrystalNo[irow][jcol] = mapGrain2Phase[ int(mapCrystalNo[irow][jcol]) - 1 ]
+                    mapCrystalNo[irow][jcol] = mapGrain2Phase[ mapCrystalNo[irow][jcol] - 1 ]
 
             maxPhase = int( max(max(mapCrystalNo)) )
 

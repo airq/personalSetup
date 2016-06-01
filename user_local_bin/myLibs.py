@@ -10,6 +10,10 @@
 import os,sys,math
 import numpy as np
 
+
+def allIsDigit(line):
+    return all(i.isdigit() for i in line.split())
+
 ebsdInfo = {
             'xstep' : 0,
             'ystep' : 0,
@@ -36,6 +40,9 @@ arrayStoreNo. phase   x   y   euler1  euler2  euler3
 fix y first, and loop x
 '''
 def readCtfFile(fopen):
+    '''
+    # remenber, euler = eulerangles.reshape(ycells, xcells, 3); euler(jrow, icol, :)
+    '''
     fileHeader = []; coords0 = []; eulerangles0 = []; phase0 = []
     beginRecord = False
     line = fopen.readline()
@@ -124,3 +131,92 @@ def readAngFile(fopen, phaseList, phaseColumn, phaseThreshold):
            np.array(coords,dtype='f').reshape(ebsdInfo['ncols_odd']*ebsdInfo['nrows'],2), \
            np.array(phase,dtype='i').reshape(ebsdInfo['ncols_odd']*ebsdInfo['nrows']), \
            fileHeader
+    # remenber, euler = eulerangles.reshape(ycells, xcells, 3); euler(jrow, icol, :)
+
+
+def getEBSDHeader(xCells,yCells,xStep, yStep, format, materials=['Al']):
+    '''
+    materials is a list, for example. ['Al', 'Mg'], then the phase No. is Al-1, Mg-2 
+    '''
+    materialLatticeParas = \
+      {
+        'ang': 
+          { 'Al': [ '# MaterialName          Al',  '# Formula               Fe',  '# Info',  '# Symmetry              43', 
+                    '# LatticeConstants      2.870 2.870 2.870  90.000  90.000  90.000',  '# NumberFamilies        4', 
+                    '# hklFamilies           1  1  0 1 0.000000 1',  '# hklFamilies           2  0  0 1 0.000000 1', 
+                    '# hklFamilies           2  1  1 1 0.000000 1',  '# hklFamilies           3  1  0 1 0.000000 1', 
+                    '# Categories            0 0 0 0 0 ', ]
+          },
+        'ctf':
+          { 'Al': [ '4.05;4.05;4.05\t90;90;90\tAluminium\t11\t225\t3803863129_5.0.6.3\t-2102160418\tCryogenics18,54-55',
+                    'Phase\tX\tY\tBands\tError\tEuler1\tEuler2\tEuler3\tMAD\tBC\tBS'],
+          }
+      }
+#
+    header0 = \
+      {
+        'ang': [ '# TEM_PIXperUM          1.000000',  '# x-star                0.509548',  '# y-star                0.795272', 
+                 '# z-star                0.611799',  '# WorkingDistance       18.000000',  '#', ],
+        'ctf': [ 'Channel Text File',    'Prj\tX:\\xxx\\xxxx.cpr',
+                 'Author\t[Haiming Zhang at Shanghai Jiao Tong University]',  'JobMode\tGrid', ]
+      }
+
+    tail = \
+      {
+        'ang': [ '#',  '# OPERATOR: ODFsammpling',  '#',  '# SAMPLEID: ',  '#',  '# SCANID: ', '#'],
+        'ctf': [ 'AcqE1\t0',  'AcqE2\t0', 'AcqE3\t0', 
+                 'Euler angles refer to Sample Coordinate system (CS0)!\tMag\t300\tCoverage\t100\tDevice\t0\tKV\t20\tTiltAngle\t70\tTiltAxis\t0'],
+      }
+
+    phasePrefix = \
+      {
+        'ang': '# Phase                 ',
+        'ctf': 'Phase\t'
+      }
+
+    sizeInfo = \
+      {
+        'ang': [ '#', '# GRID: SquareGrid', '# XSTEP: ' + str(xStep), '# YSTEP: ' + str(yStep), '# NCOLS_ODD: ' + str(xCells), 
+                 '# NCOLS_EVEN: ' + str(xCells), '# NROWS: ' + str(yCells), ],
+        'ctf': [ 'XCells\t'+ str(xCells), 'YCells\t'+ str(yCells), 'XStep\t'+ str(xStep), 'YStep\t'+ str(yStep), ]
+      }
+
+    phaseText = []
+    for phasei, m in enumerate(materials):
+        phaseText = phaseText + [phasePrefix[format] + str(phasei+1)] + materialLatticeParas[format][m]
+    if format == 'ang':
+        return header0[format] + phaseText + sizeInfo[format] + tail[format]
+    else:
+        return header0[format] + sizeInfo[format] + tail[format] + phaseText 
+
+# operate .geom or material.config file
+
+def mapCoordCrystalNo(fopen, xyzposition):
+    '''
+    this subroutine deals with the .geom file, get the grain No of each grid.
+    fopen is the read object of the .geom file, 
+    surfPlot is the surface in which the orientation, x, y, or z
+    sliceNo is the No. of slice will be along the normal of surfPlot
+    will be plot.
+    '''
+
+    line = fopen.readline()
+    geomInfo = {}
+    mapCrystalNo = []
+    while line:
+        if not line.strip() == '':        # non empty line
+            texts = line.split()
+
+            if texts[0] in ['grid', 'size', 'origin']: 
+                geomInfo[texts[0]] = [ texts[i] for i in xyzposition ]
+            elif texts[0] in [ 'homogenization', 'microstructures']: 
+                geomInfo[texts[0]] = texts[1]
+            elif all(i.isdigit() for i in texts):
+                mapCrystalNo.append( [ int(i) for i in texts ] )
+            elif '1 to ' in line:
+                for irow in xrange(int(geomInfo['grid'][1])):
+                    mapCrystalNo.append( [int(irow*int(geomInfo['grid'][0]) + jcol + 1) for jcol in xrange(int(geomInfo['grid'][0])) ] )
+
+        line = fopen.readline()
+    return geomInfo, mapCrystalNo
+
