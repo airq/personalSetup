@@ -27,10 +27,14 @@ def readMTEXfile(fopen):
     for line in content[1:]:
         if line.strip() != '':
             words = line.split()
-            eulerAngles0.append( map(float, words[position['phi1']:position['phi1']+3]))
             coordsX.append( float(words[position['x']] ))
             coordsY.append( float(words[position['y']] ))
-            phase0.append( int(words[position['phase']]))
+            if words[position['phi1']].lower() == 'nan':
+                eulerAngles0.append( [0.0, 0.0, 0.0] )
+                phase0.append(0)
+            else:
+                eulerAngles0.append( map(float, words[position['phi1']:position['phi1']+3]))
+                phase0.append( int(words[position['phase']]))
 
     xcells = len(set(coordsX)); ycells = len(set(coordsY))
     xstep  = ( np.max(coordsX) - np.min(coordsX) )/(xcells-1)
@@ -38,7 +42,7 @@ def readMTEXfile(fopen):
 
     eulerangles = np.empty([xcells, ycells, 3])
     coords = np.empty([xcells, ycells, 2])
-    phases = -np.ones([xcells, ycells ])
+    phases = -np.ones([xcells, ycells ], dtype=int)
 
     for i in xrange(len(phase0)):
         jrow = int( np.round( coordsY[i]/ystep ))

@@ -60,7 +60,9 @@ def readCtfFile(fopen):
             else:
                 fileHeader.append(line)
                 for key in ebsdInfo.keys():
-                    if key in line.lower(): ebsdInfo[key] = float(words[-1])
+                    if key in line.lower(): 
+                        ebsdInfo[key] = float(words[-1]) if key in ['xstep', 'ystep'] else int(words[-1])
+
         if 'phase' in line.lower() and 'euler1' in line.lower():
             beginRecord = True
         line = fopen.readline()

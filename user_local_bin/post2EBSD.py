@@ -9,27 +9,7 @@
 from optparse import OptionParser
 import os,sys,math,string
 import numpy as np
-
-
-def getHeader(xCells,yCells,xStep, yStep):
-    # ctf format
-    return [ \
-    'Channel Text File',
-    'Prj\tX:\\xxx\\xxxx.cpr',
-    'Author\t[Haiming Zhang at Shanghai Jiao Tong University]',
-    'JobMode\tGrid',
-    'XCells\t'+ str(xCells),
-    'YCells\t'+ str(yCells),
-    'XStep\t'+ str(xStep),
-    'YStep\t'+ str(yStep),
-    'AcqE1\t0',
-    'AcqE2\t90',
-    'AcqE3\t0',
-    'Euler angles refer to Sample Coordinate system (CS0)!\tMag\t300\tCoverage\t100\tDevice\t0\tKV\t20\tTiltAngle\t70\tTiltAxis\t0',
-    'Phases\t1',
-    '4.05;4.05;4.05\t90;90;90\tAluminium\t11\t225\t3803863129_5.0.6.3\t-2102160418\tCryogenics18,54-55',
-    'Phase\tX\tY\tBands\tError\tEuler1\tEuler2\tEuler3\tMAD\tBC\tBS'
-           ]
+from myLibs import getEBSDHeader
 
 
 def getElemConnectFFTW(ipcoords, elemList):
@@ -126,9 +106,13 @@ parser.add_option('-p', '--phase',      dest='phase', type='int', metavar = 'int
 parser.add_option('-a', '--axis',       dest='surface', type='string', metavar = 'string',
                   help='homogenization index for <microstructure> configuration [%default]')
 
+parser.add_option("--mat", metavar = '<string LIST>', dest="materials",
+                  help="list of materials for phase 1, phase2, ... [%default] ['Al','Mg']")
+
 parser.set_defaults( ebsdStepRatio = 2, 
                      phase         = 1,
-                     surface       = 'z'
+                     surface       = 'z',
+                     materials      = ['Al']
                    )
 
 (options,filenames) = parser.parse_args()
@@ -222,7 +206,10 @@ else:
 
                 # write ctf format ebsd data
                 angFile = open(os.path.splitext(filename)[0] + '.ctf','w')
-                print angFile
+                for line in  getEBSDHeader(ebsdCellX,ebsdCellY, ebsdStepX, ebsdStepY, 'ctf', options.materials):
+                    angFile.write(line + '\n')
+
+
                 for line in getHeader(ebsdCellX, ebsdCellY, ebsdStepX, ebsdStepY):
                     angFile.write(line + '\n')
 
