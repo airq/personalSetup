@@ -75,7 +75,7 @@ else:
 
             if options.homoWrite:
                 for text in [ matConfigComment, '<homogenization>\n', matConfigComment, '[oneGrain]\n', 'type isostrain\n', \
-                        'Ngrains  1\n', '(output)  ipcoords \n']:
+                        'Ngrains  1\n']:
                     matOpen.write(text)
                 if options.ebsd:
                     matOpen.write('ebsd_ngrains  '+str(nOrientation)+' \n')

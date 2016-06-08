@@ -9,13 +9,32 @@
 from optparse import OptionParser
 import os,sys,math,re,random,string
 import numpy as np
-from myLibs import allIsDigit, getEBSDHeader, mapCoordCrystalNo
+from myLibs import allIsDigit, getEBSDHeader, mapCoordCrystalNo, readCtfFile, readAngFile
 
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 
+def period2Pi(phi):
+    if phi<0:
+        return 360. + phi
+    elif phi>360.:
+        return phi - 360.
+    else:
+        return phi
 
-def readMTEXfile(fopen):
+def rotate(y,string):
+    '''
+    get a specific operation according to the string
+    string = 'x-', return x-y, string = '-x', return y-x; string='x', return x+y
+    '''
+    if string[-1].isdigit() and string[0].isdigit():
+        return period2Pi(y+float(string))
+    elif string[-1] == '-':
+        return period2Pi(float(string[:-1]) - y)
+    elif string[0]  == '-':
+        return period2Pi(y - float(string[1:]))
+
+def readMTEXfile(fopen, rot):
     position = {'phi1':0, 'phase':3, 'x':9, 'y':10}
     content = fopen.readlines()
     line = content[0].split()
@@ -27,14 +46,14 @@ def readMTEXfile(fopen):
     for line in content[1:]:
         if line.strip() != '':
             words = line.split()
-            coordsX.append( float(words[position['x']] ))
-            coordsY.append( float(words[position['y']] ))
             if words[position['phi1']].lower() == 'nan':
-                eulerAngles0.append( [0.0, 0.0, 0.0] )
+                eulerAngles0.append([rotate(0.0, rot[0]), rotate(0.0, rot[0]), rotate(0.0, rot[0])])
                 phase0.append(0)
             else:
                 eulerAngles0.append( map(float, words[position['phi1']:position['phi1']+3]))
                 phase0.append( int(words[position['phase']]))
+            coordsX.append( float(words[position['x']] ))
+            coordsY.append( float(words[position['y']] ))
 
     xcells = len(set(coordsX)); ycells = len(set(coordsY))
     xstep  = ( np.max(coordsX) - np.min(coordsX) )/(xcells-1)
@@ -75,14 +94,20 @@ parser.add_option("-f", "--format", type="string", metavar = 'string', dest="for
                   help="the format of the output file [%default]")
 parser.add_option("--mat", metavar = '<string LIST>', dest="materials",
                   help="list of materials for phase 1, phase2, ... [%default] ['Al','Mg']")
-
+parser.add_option("-r",'--rotate', metavar = '<string LIST>', dest="rotate",
+                  help="rotate the euler angles ... [%default]")
+parser.add_option("-e", "--ebsdfile", type="string", metavar = 'string', dest="ebsdfile",
+                  help="the reference ebsd file from which the header will extracted [%default]")
 
 parser.set_defaults(
                     format         = 'ctf',
-                    materials      = ['Al']
+                    materials      = ['Al'],
+                    rotate         = ['180-','180-','180'],
+                    ebsdfile       = 'None'
                  )
 
 (options,filenames) = parser.parse_args()
+
 
 if filenames == []:
     print 'missing the .mtx file, please specify a mtex file!'
@@ -90,9 +115,8 @@ else:
     for filename in filenames:
         print 'process file %s by %s'%(filename, scriptName)
         if os.path.exists(filename):
-
             fopen = open(filename, 'r')
-            coords, eulerangles, phases, xCells, yCells, xStep, yStep = readMTEXfile(fopen)
+            coords, eulerangles, phases, xCells, yCells, xStep, yStep = readMTEXfile(fopen, options.rotate)
             fopen.close()
 
             # write header
@@ -104,19 +128,32 @@ else:
             print 'xStep is %s, yStep is %s'%(xStep, yStep)
             print 'xCells is %s, yCells is %s'%(xCells, yCells)
 
-
-            for line in  getEBSDHeader(xCells,yCells,xStep, yStep, options.format, options.materials):
-                angFile.write(line + '\n')
+            if os.path.exists(options.ebsdfile):
+                fopen = open(options.ebsdfile)
+                if os.path.splitext(options.ebsdfile)[-1] == '.ang':
+                    eulerangle, coord, phase, getEBSDHeader = readAngFile(fopen, 1, 1, 1)
+                    options.format = 'ang'
+                elif os.path.splitext(options.ebsdfile)[-1] == '.ctf':
+                    eulerangle, coord, phase, getEBSDHeader = readCtfFile(fopen)
+                    options.format = 'ctf'
+                else:
+                    print 'unknown input file type!!'
+                    continue
+                for line in  getEBSDHeader:
+                    angFile.write(line)
+            else:
+                for line in  getEBSDHeader(xCells,yCells,xStep, yStep, options.format, options.materials):
+                    angFile.write(line + '\n')
 
             # write data
             for jrow in xrange(yCells):
                 for icol in xrange(xCells):
 
-                    eulerAngs = eulerangles[icol, jrow, :]
+                    eulerAngs = [ rotate( eulerangles[icol, jrow, i], options.rotate[i] ) for i in xrange(3) ]
                     coords0   = coords[icol, jrow, :]
                     phaseNo   = phases[icol, jrow]
 
-                    if options.format == 'ang': 
+                    if options.format == 'ang':
                         angFile.write(''.join(['%12.5f'%(angle*np.pi/180.) for angle in eulerAngs])+''.join(['%12.5f'%coord for coord in coords0 ])+
                             ' 100.0 1.0 0 1 1.0\n')
                         counter += 1

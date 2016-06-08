@@ -52,6 +52,7 @@ def readCtfFile(fopen):
             if beginRecord:                                                                               # process initial comments/header block
                 coords0.append(map(float, words[1:3]))                       # coordinates
                 eulerangles0.append(map(float,words[5:8])) # radius to degree
+
                 if map(int, words[0]) <= 0:
                     print 'negative phase No. detected, I will see it as 0, please check the input data'
                     phase0.append(0)

@@ -65,7 +65,7 @@ for file in files:
 
       file['output'].write(line)
       if 'bands' in line.lower() and 'mad' in line.lower():
-          offsetLineNum = content.index(line)
+          offsetLineNum = content.index(line) + 1
           break
 
   if options.grid[0] + options.origin[0] > XCells: 
@@ -74,12 +74,15 @@ for file in files:
       print "%s + %s is out of range, YCells is %s!"%(options.grid[1], options.origin[1], YCells)
 
   for iy in xrange(options.grid[1]):
-      istart = offsetLineNum + 1 + (options.origin[1] + iy) * XCells + options.origin[0]
+      istart = offsetLineNum + (options.origin[1] + iy) * XCells + options.origin[0]
       for ix in xrange(options.grid[0]):
           line = content[istart + ix]
-          linesplit = line.split()
-          file['output'].write(line.replace(linesplit[1], str(float(linesplit[1])-XStep*options.origin[0]) ). 
-                                    replace(linesplit[2], str(float(linesplit[2])-YStep*options.origin[1]) ) )
+          words = line.split()
+          text = '\t'.join([i for i in [words[0], str(float(words[1])-XStep*options.origin[0]), 
+              str(float(words[2])-YStep*options.origin[1])] + words[3:] ])
+          file['output'].write(text+'\n')
+          #file['output'].write(line.replace(linesplit[1], str(float(linesplit[1])-XStep*options.origin[0]) ). 
+                                    #replace(linesplit[2], str(float(linesplit[2])-YStep*options.origin[1]) ) )
   file['input'].close()
   file['output'].close()
   file['croak'].close()

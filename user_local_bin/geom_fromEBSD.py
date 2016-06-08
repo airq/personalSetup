@@ -146,6 +146,7 @@ for filename in filenames:
                              '(constituent)\tphase %i\ttexture %i\tfraction 1.0'%(microstructure[i,1],microstructure[i,0]+1)
                              ]
     info['microstructures'] = len(microstructure)
+    grid0 = info['grid'][0], info['grid'][1], info['grid'][2] # using info['grid'] then share the same memory, using info[grid][:] then different memory
     info['size'][0:2] = options.enlarge*info['size'][0:2]; info['grid'][0:2] = options.enlarge*info['grid'][0:2]
     info['homogenization'] = options.homogenization
 

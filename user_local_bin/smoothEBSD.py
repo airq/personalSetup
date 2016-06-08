@@ -118,6 +118,8 @@ parser.add_option('--fill', dest='fill', action='store_false',
                   help = '[%default]' )
 parser.add_option('-m', dest='maxround', type='int', metavar = 'int',
                   help='number of  [%default]')
+parser.add_option('-n', dest='number', type='float', metavar = 'float',
+                  help='number of  [%default]')
 
 
 parser.set_defaults(
@@ -126,7 +128,8 @@ parser.set_defaults(
                     materials      = ['Al'],
                     smooth         = True,
                     maxround       = 5,
-                    fill           = True
+                    fill           = True,
+                    number         = 8
                  )
 
 
@@ -174,9 +177,9 @@ else:
                             if phases[counter] > 0:  # non-empty grid
                                 if gridNeedSmooth(eulerList, eulerangles[counter], options.threshold):  #need smooth
                                     #print 'yes', jrow, icol
-                                    #if len(groupList[0]) > len(eulerList)/2:
-                                    eulerangles[counter] = np.average(groupList[0], 0)
-                                    allAreSmoothed = False
+                                    if len(groupList[0]) > int(len(eulerList)/options.number):
+                                        eulerangles[counter] = np.average(groupList[0], 0)
+                                        allAreSmoothed = False
 
                         if options.fill:
                             if not fillPrint:
