@@ -293,7 +293,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 !   endif
  endif
 
- computationMode = CPFEM_CALCRESULTS                                                                ! always calc
+! computationMode = CPFEM_CALCRESULTS                                                                ! always calc
    
  theTime  = time(2)                                                                                 ! record current starting time
  theDelta = dtime                                                                                   ! record current time increment
