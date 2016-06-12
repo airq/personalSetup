@@ -105,14 +105,12 @@ for filename in filenames:
 #   check euler angle data
     limits = [360,180,360];  errors = []
     if any([np.any(eulerangles[:,i]>=limits[i]) for i in [0,1,2]]):
-        errors.append ('Error: euler angles out of bound. Ang file might contain unidexed poins.')
+        print 'Warning: euler angles out of bound. ebsd file might contain unidexed poins.'
         for i,angle in enumerate(['phi1','PHI','phi2']):
             for n in np.nditer(np.where(eulerangles[:,i]>=limits[i]),['zerosize_ok']):
-                errors.append ('%s in line %i (%4.2f %4.2f %4.2f)\n'
-                                %(angle,n,eulerangles[n,0],eulerangles[n,1],eulerangles[n,2]))
-    if errors  != []:
-        damask.util.croak(errors)
-        continue
+                print '%s in line %i (%4.2f %4.2f %4.2f)\n'%(angle,n,eulerangles[n,0],eulerangles[n,1],eulerangles[n,2])
+                eulerangles[n,i] = eulerangles[n,i] - limits[i]
+
 
     eulerangles=np.around(eulerangles,int(options.precision))                                         # round to desired precision
     # ensure, that rounded euler angles are not out of bounds (modulo by limits)

@@ -10,6 +10,7 @@ from optparse import OptionParser
 import os,sys,math,re,random,string
 import numpy as np
 from myLibs import allIsDigit, getEBSDHeader, mapCoordCrystalNo, readCtfFile, readAngFile
+import damask
 
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
@@ -58,6 +59,8 @@ def readMTEXfile(fopen, rot):
     xcells = len(set(coordsX)); ycells = len(set(coordsY))
     xstep  = ( np.max(coordsX) - np.min(coordsX) )/(xcells-1)
     ystep  = ( np.max(coordsY) - np.min(coordsY) )/(ycells-1)
+    print 'xStep is %s, yStep is %s'%(xstep, ystep)
+    print 'xCells is %s, yCells is %s'%(xcells, ycells)
 
     eulerangles = np.empty([xcells, ycells, 3])
     coords = np.empty([xcells, ycells, 2])
@@ -74,8 +77,11 @@ def readMTEXfile(fopen, rot):
     for jrow in xrange(ycells):
         for icol in xrange(xcells):
             if phases[icol, jrow] < 0:
-                print 'data is incorrect at y=%s, x=%s'%(jrow*ystep, icol*xstep)
-                exit()
+                print 'data is missing or incorrect at y=%s, x=%s, I will see it as 0 phase'%(jrow*ystep, icol*xstep)
+                phases[icol, jrow] = 0
+                coords[icol, jrow] = np.array([icol*xstep, jrow*ystep])
+                eulerangles[icol, jrow] = np.zeros(3)
+
 
     return coords, eulerangles, phases, xcells, ycells, xstep, ystep
 
@@ -83,7 +89,7 @@ def readMTEXfile(fopen, rot):
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
-parser = OptionParser(usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption,usage='%prog options [file[s]]', description = """
 Transform linear binned data into Euler angles. ***This script does not support the case that one CRYSTALLITE contains
 more than one (constituent).***
 
@@ -92,18 +98,18 @@ more than one (constituent).***
 
 parser.add_option("-f", "--format", type="string", metavar = 'string', dest="format",
                   help="the format of the output file [%default]")
-parser.add_option("--mat", metavar = '<string LIST>', dest="materials",
+parser.add_option("--mat", metavar = '<string LIST>', dest="materials", action='extend',
                   help="list of materials for phase 1, phase2, ... [%default] ['Al','Mg']")
-parser.add_option("-r",'--rotate', metavar = '<string LIST>', dest="rotate",
-                  help="rotate the euler angles ... [%default]")
 parser.add_option("-e", "--ebsdfile", type="string", metavar = 'string', dest="ebsdfile",
                   help="the reference ebsd file from which the header will extracted [%default]")
+parser.add_option("-r",'--rotate', metavar = '<string LIST>', dest="rotate",action='extend',
+                  help="rotate the euler angles ... [%default]")
 
 parser.set_defaults(
                     format         = 'ctf',
                     materials      = ['Al'],
-                    rotate         = ['180-','180-','180'],
-                    ebsdfile       = 'None'
+                    ebsdfile       = 'None',
+                    rotate         = ['180-', '180-', '180']
                  )
 
 (options,filenames) = parser.parse_args()
@@ -125,8 +131,6 @@ else:
             else:                       # 'ctf' file, degree
                 angFile = open(os.path.splitext(filename)[0] + '.ctf','w')
 
-            print 'xStep is %s, yStep is %s'%(xStep, yStep)
-            print 'xCells is %s, yCells is %s'%(xCells, yCells)
 
             if os.path.exists(options.ebsdfile):
                 fopen = open(options.ebsdfile)

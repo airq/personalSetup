@@ -120,12 +120,12 @@ else:
             for line in  getEBSDHeader(xCells,yCells,xStep, yStep, options.format, options.materials):
                 angFile.write(line + '\n')
 
-            # write data
-            for iy in xrange(xCells):
+            # write data, mapCrystalNo[yCells][xCells]
+            for iy in xrange(yCells):
                 coordY = iy*yStep
                 #grainPosY = iy-1 if iy>0 else 0
                 grainPosY = iy
-                for ix in xrange(yCells):
+                for ix in xrange(xCells):
                     coordX = ix*xStep
                     #grainPosX = ix-1 if ix>0 else 0
                     grainPosX = ix

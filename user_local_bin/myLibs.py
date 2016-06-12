@@ -153,6 +153,8 @@ def getEBSDHeader(xCells,yCells,xStep, yStep, format, materials=['Al']):
         'ctf':
           { 'Al': [ '4.05;4.05;4.05\t90;90;90\tAluminium\t11\t225\t3803863129_5.0.6.3\t-2102160418\tCryogenics18,54-55',
                     'Phase\tX\tY\tBands\tError\tEuler1\tEuler2\tEuler3\tMAD\tBC\tBS'],
+            'Mg': [ '3.209;3.209;3.209\t90;90;120\tMagnesium\t9\t194',
+                    'Phase\tX\tY\tBands\tError\tEuler1\tEuler2\tEuler3\tMAD\tBC\tBS'],
           }
       }
 #

@@ -39,6 +39,7 @@ def exchangeCoords(content, format, offset, exchangTag):
     for ang file, xcells is xcells_odd, xcells_even must also be provided, xcells_odd = xcells_even or xcells_even+1
     '''
     contentx = []; contenty = []
+    offset = offset+1
     for i in xrange(offset):
         contentx.append(content[i])
         contenty.append(content[i])
@@ -53,15 +54,15 @@ def exchangeCoords(content, format, offset, exchangTag):
 
     if format[-3:] == 'ang':
         for line in content[:offset]:
-            if 'xstep' in line.lower(): xstep = line.split()[-1]
-            if 'ystep' in line.lower(): ystep = line.split()[-1]
-            if 'ncols_odd' in line.lower(): xcells = line.split()[-1]
-            if 'ncols_even' in line.lower(): xcells_even = line.split()[-1]
-            if 'nrows' in line.lower(): ycells = line.split()[-1]
+            if 'xstep' in line.lower(): xstep = float(line.split()[-1])
+            if 'ystep' in line.lower(): ystep = float(line.split()[-1])
+            if 'ncols_odd' in line.lower(): xcells = int(line.split()[-1])
+            if 'ncols_even' in line.lower(): xcells_even = int(line.split()[-1])
+            if 'nrows' in line.lower(): ycells = int(line.split()[-1])
 
         if 'y' in exchangTag:
             for jrow in reversed(xrange(ycells)):
-                xstart = jrow/2 * (xcells+xcells_even); x_range = xcells
+                xstart = jrow/2 * (xcells+xcells_even) + offset; x_range = xcells
                 if np.mod(jrow,2) == 1:
                     xstart = xstart + xcells; x_range = xcells_even
 
@@ -73,10 +74,10 @@ def exchangeCoords(content, format, offset, exchangTag):
             content = contenty
         if 'x' in exchangTag:
             for jrow in xrange(ycells):
-                xstart = jrow/2 * (xcells+xcells_even); x_range = xcells
+                xstart = jrow/2 * (xcells+xcells_even) + offset; x_range = xcells
                 if np.mod(jrow, 2) == 1:
                     xstart = xstart + xcells; x_range = xcells_even
-                for icol in reversed(x_range):
+                for icol in reversed(xrange(x_range)):
                     line = content[xstart+icol].split()
                     contentx.append('\t'.join(
                         line[:coordsPos['ang'][0]] + [str ( xMax-float(line[coordsPos['ang'][0]]) ) ] + line[coordsPos['ang'][0]+1:]
@@ -85,13 +86,13 @@ def exchangeCoords(content, format, offset, exchangTag):
 
     elif format[-3:] == 'ctf':
         for line in content[:offset]:
-            if 'xstep' in line.lower(): xstep = line.split()[-1]
-            if 'ystep' in line.lower(): ystep = line.split()[-1]
-            if 'xcells' in line.lower(): xcells = line.split()[-1]
-            if 'ycells' in line.lower(): ycells = line.split()[-1]
+            if 'xstep' in line.lower(): xstep = float(line.split()[-1])
+            if 'ystep' in line.lower(): ystep = float(line.split()[-1])
+            if 'xcells' in line.lower(): xcells = int(line.split()[-1])
+            if 'ycells' in line.lower(): ycells = int(line.split()[-1])
         if 'y' in exchangTag:
             for jrow in reversed(xrange(ycells)):
-                xstart = jrow*xcells;  x_range = xcells
+                xstart = jrow*xcells+offset;  x_range = xcells
                 for icol in xrange(x_range):
                     line = content[xstart+icol].split()
                     contenty.append('\t'.join(
@@ -100,8 +101,8 @@ def exchangeCoords(content, format, offset, exchangTag):
             content = contenty
         if 'x' in exchangTag:
             for jrow in xrange(ycells):
-                xstart = jrow*xcells;  x_range = xcells
-                for icol in reversed(x_range):
+                xstart = jrow*xcells+offset;  x_range = xcells
+                for icol in reversed(xrange(x_range)):
                     line = content[xstart+icol].split()
                     contentx.append('\t'.join(
                         line[:coordsPos['ctf'][0]] + [str ( xMax-float(line[coordsPos['ctf'][0]]) ) ] + line[coordsPos['ctf'][0]+1:]
@@ -132,7 +133,7 @@ parser.add_option('-n','--name', type = 'string', metavar ='string', dest = 'nam
 
 parser.set_defaults(
                     coords = ' ',
-                    euler  = (0.0,0.0,0.0),
+                    euler  = ('0.0','0.0','0.0'),
                     name   = 'rot'
                  )
 (options,filenames) = parser.parse_args()
