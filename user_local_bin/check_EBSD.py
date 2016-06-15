@@ -54,7 +54,7 @@ for filename in filenames:
     noZeroPhase = True
     for i in phase:
         if i == 0:
-            print '0 phase exists'
+            print '***** zero phase exists *****'
             noZeroPhase = False
     if noZeroPhase:
-        print 'non zero phase found!'
+        print 'non zero phase found! It is okay'

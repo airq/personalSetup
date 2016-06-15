@@ -53,7 +53,7 @@ else:
             recordMat = False
             newHeader = 0
             for i,line in enumerate(content):
-                if line:
+                if line.strip()!='':
                     if line.split()[0] == '<microstructure>':
                         recordMat = True
                         newHeader = i

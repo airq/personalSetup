@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math,re,time,struct,string
@@ -18,26 +18,27 @@ fileExtensions = { \
 cr_stress = ('p', 's')
 cr_deform = ('f', 'fe', 'fp', 'e', 'ee', 'lp')
 cr_orient = ( 'eulerangles', 'grainrotation')
-co_stress = ( 'resistance_slip', 'resolved_stress_slip', 
-              'resistance_twin', 'resolved_stress_twin',
-              'threshold_stress_twin',
+co_stress = ( 'resistance_slip', 'resolvedstress_slip',
+              'resistance_twin', 'resolvedstress_twin',
+              'thresholdstress_twin',
               'flowstress'
             )
-co_shear  = ( 'shear_rate_slip', 'accumulated_shear_slip', 'totalshear', 
-              'shear_rate_twin', 'accumulated_shear_twin', 
+co_shear  = ( 'shearrate_slip', 'accumulatedshear_slip', 'totalshear',
+              'shearrate_twin', 'accumulatedshear_twin',
               'strainrate',
             )
-co_dislo =  ( 'edge_density', 'dipole_density', 
+co_dislo =  ( 'edge_density', 'dipole_density',
             )
 ouputPrecision = {
-                   'ho':
-                   'cr': {'cr_stress': 3, 
-
-                         }
+                   'ho': {},
+                   'cr': {'cr_stress': [cr_stress, 3, 'stressUnitScale'],
+                         },
                    'co': {'co_stress': [co_stress, 3, 'stressUnitScale'],
                           'co_shear' : [co_shear,  4],
+                          'co_dislo' : [co_dislo,  3, 'disloUnitScale']
                           'others'   : [[], 3]
-                         }
+                         },
+                   
                  }
 stressMPa      =[]
 unit_scale_coeff = {'stressUnitScale': 1.0e-6,

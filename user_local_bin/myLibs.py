@@ -155,6 +155,7 @@ def getEBSDHeader(xCells,yCells,xStep, yStep, format, materials=['Al']):
                     'Phase\tX\tY\tBands\tError\tEuler1\tEuler2\tEuler3\tMAD\tBC\tBS'],
             'Mg': [ '3.209;3.209;3.209\t90;90;120\tMagnesium\t9\t194',
                     'Phase\tX\tY\tBands\tError\tEuler1\tEuler2\tEuler3\tMAD\tBC\tBS'],
+            'Cu': ['3.6144;3.6144;3.6144\t90;90;90\tCopper\t11\t225\t3803863129\t5.0.6.3\t-906185425'],
           }
       }
 #

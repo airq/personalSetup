@@ -10,6 +10,7 @@ from optparse import OptionParser
 import os,sys,math,string
 import numpy as np
 from myLibs import getEBSDHeader
+import damask
 
 
 def getElemConnectFFTW(ipcoords, elemList):
@@ -17,7 +18,6 @@ def getElemConnectFFTW(ipcoords, elemList):
     get the initial connectivity of grids of Fourier points
     Row - x axis; Column - y axis
     '''
-    print ipcoords
     minIpCoords = np.min( ipcoords[:,0] ), np.min( ipcoords[:,1] ) # minx, miny
     maxIpCoords = np.max( ipcoords[:,0] ), np.max( ipcoords[:,1] ) # maxx, maxy
 
@@ -25,7 +25,7 @@ def getElemConnectFFTW(ipcoords, elemList):
     maxRow = int( np.round( maxIpCoords[1]/elemSizeY + 0.5 ) )
     maxCol = int( np.round( maxIpCoords[0]/elemSizeX + 0.5 ) )
 
-    print 'total row = %s, total column = %s, nrow*ncol = %s, total element is %s'%(maxRow, maxCol, maxRow*maxCol, len(elemList))
+    print 'Infos of the elements of the input file: total row = %s, total column = %s, nrow*ncol = %s, total element is %s'%(maxRow, maxCol, maxRow*maxCol, len(elemList))
     if maxRow*maxCol != len(elemList):
         print 'total element is not equal to nrow*nrol!'
 
@@ -91,37 +91,41 @@ def allIsDigit(line):
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
-parser = OptionParser(usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Transform linear binned data into Euler angles. ***This script does not support the case that one CRYSTALLITE contains
 more than one (constituent).***
 
 """)
 
 parser.add_option('-r', '--ratio',      dest='ebsdStepRatio', type='int', metavar = 'int',
-                  help='homogenization index for <microstructure> configuration [%default]')
+                  help='The ratio of element size with respect to the ebsd step [%default]')
 
+parser.add_option("--mat", metavar = '<string LIST>', dest="materials", action='extend',
+                  help="list of materials for phase 1, phase2, ... [%default] ['Al','Mg']")
 parser.add_option('-p', '--phase',      dest='phase', type='int', metavar = 'int',
                   help='homogenization index for <microstructure> configuration [%default]')
 
 parser.add_option('-a', '--axis',       dest='surface', type='string', metavar = 'string',
-                  help='homogenization index for <microstructure> configuration [%default]')
+                  help='The surface will be plotted [%default]')
 
-parser.add_option("--mat", metavar = '<string LIST>', dest="materials",
-                  help="list of materials for phase 1, phase2, ... [%default] ['Al','Mg']")
+parser.add_option('--precision',    dest='precision', choices=['0','1','2','3'], metavar = 'int',
+                  help = 'euler angles decimal places for output format and compressing (0,1,2,3,4) [3]')
 
 parser.set_defaults( ebsdStepRatio = 2, 
                      phase         = 1,
                      surface       = 'z',
-                     materials      = ['Al']
+                     materials      = ['Al'],
+                     precision      = '3',
                    )
 
 (options,filenames) = parser.parse_args()
 
-keywords = ['_ipinitialcoord', '_eulerangles']
+keywords = ['_pos', '_eulerangles']
 axisPositionList = {'x': ['2', '3'], 'y': ['1', '3'], 'z': ['1', '2']}
 axisPos = axisPositionList [options.surface]
 
-
+eulerFormatOut='%%%i.%if'%(int(options.precision)+4,int(options.precision))
+print eulerFormatOut
 if filenames == []:
     print 'missing the input file, please specify a geom file!'
 else:
@@ -185,10 +189,9 @@ else:
                 nodeCoords = getNodeCoordsFromVtk(fileCurrentIpCoordsFile, maxRow, maxCol)
                 eleDomain, ebsdSizeX, ebsdSizeY = getIpsEffectDomain(nodeCoords, maxRow, maxCol)
 
-                print eleDomain
                 ebsdCellX, ebsdCellY = int(ebsdSizeX/ebsdStepX) + 1, int(ebsdSizeY/ebsdStepY) + 1
 
-                print 'total xCells = %s, total yCells = %s, xStep = %s, yStep = %s'%(ebsdCellX, ebsdCellY, ebsdStepX, ebsdStepY)
+                print 'Infos of new ebsd file: total xCells = %s, total yCells = %s, xStep = %s, yStep = %s'%(ebsdCellX, ebsdCellY, ebsdStepX, ebsdStepY)
                 # declare the array
                 mapEBSDgrid2Elems = np.zeros( [ebsdCellX, ebsdCellY], dtype=int )
 
@@ -200,8 +203,8 @@ else:
                     rowLower, rowUpper = int( (yNeg/ebsdStepY) ), int( (yPos/ebsdStepY) )
                     colLeft,  colRight = int( (xNeg/ebsdStepX) ), int( (xPos/ebsdStepX) )
 
-                    for irow in xrange(rowLower, rowUpper+1):
-                        for jcol in xrange(colLeft, colRight+1):
+                    for irow in xrange(rowLower, rowUpper):
+                        for jcol in xrange(colLeft, colRight):
                             mapEBSDgrid2Elems[ jcol, irow ] = elemList[elem]
 
                 # write ctf format ebsd data
@@ -209,9 +212,6 @@ else:
                 for line in  getEBSDHeader(ebsdCellX,ebsdCellY, ebsdStepX, ebsdStepY, 'ctf', options.materials):
                     angFile.write(line + '\n')
 
-
-                for line in getHeader(ebsdCellX, ebsdCellY, ebsdStepX, ebsdStepY):
-                    angFile.write(line + '\n')
 
                 for irow in xrange(ebsdCellY):
                     coordY = irow * ebsdStepY
@@ -221,11 +221,8 @@ else:
                         elem = mapEBSDgrid2Elems[ jcol, irow ]
                         eulerAngs = eulerangles[elem - 1] if elem > 0 else np.zeros(3)
                         phaseNo   = phaseList[elem - 1] if elem > 0 else 0
-                        angFile.write(str(phaseNo)+'\t'+
-                                                   '\t'.join([str(coord) for coord in [ coordX, coordY ]])+
-                                                   '\t5\t0\t'+
-                                                   '\t'.join([str(angle) for angle in eulerAngs])+
-                                                   '\t0.5000\t100\t0\n')
+                        angFile.write( (str(phaseNo)+'\t'+ str(coordX)+'\t'+ str(coordY) + '\t5\t0\t'+
+                                      eulerFormatOut+'\t'+eulerFormatOut+'\t'+eulerFormatOut+'\t0.5\t50\t0\n')%(eulerAngs[0],eulerAngs[1],eulerAngs[2]))
                 angFile.close()
         else:
             print 'the input file %s is not found'
