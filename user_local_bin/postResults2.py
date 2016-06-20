@@ -1,4 +1,4 @@
-!/usr/bin/env python
+#!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math,re,time,struct,string
@@ -14,38 +14,35 @@ fileExtensions = { \
                    'spectral': ['.spectralOut',],
                  }
 
-
-cr_stress = ('p', 's')
-cr_deform = ('f', 'fe', 'fp', 'e', 'ee', 'lp')
-cr_orient = ( 'eulerangles', 'grainrotation')
+# the last one must be the name of the tuple.
+cr_stress = ('p', 's', 'cr_stress')
+cr_deform = ('f', 'fe', 'fp', 'e', 'ee', 'lp', 'cr_deform')
+cr_orient = ( 'eulerangles', 'grainrotation', 'cr_orient')
 co_stress = ( 'resistance_slip', 'resolvedstress_slip',
               'resistance_twin', 'resolvedstress_twin',
               'thresholdstress_twin',
-              'flowstress'
+              'flowstress',
+              'co_stress'
             )
 co_shear  = ( 'shearrate_slip', 'accumulatedshear_slip', 'totalshear',
               'shearrate_twin', 'accumulatedshear_twin',
               'strainrate',
+              'co_shear'
             )
 co_dislo =  ( 'edge_density', 'dipole_density',
+              'co_dislo'
             )
-ouputPrecision = {
-                   'ho': {},
-                   'cr': {'cr_stress': [cr_stress, 3, 'stressUnitScale'],
-                         },
-                   'co': {'co_stress': [co_stress, 3, 'stressUnitScale'],
-                          'co_shear' : [co_shear,  4],
-                          'co_dislo' : [co_dislo,  3, 'disloUnitScale']
-                          'others'   : [[], 3]
-                         },
-                   
-                 }
-stressMPa      =[]
-unit_scale_coeff = {'stressUnitScale': 1.0e-6,
-                    'disloUnitScale':  1.0e-12
-                   }
 
-'damage' = 'isoBrittle_DrivingForce'
+allVariables = [cr_stress, cr_deform, cr_orient, co_stress, co_shear, co_dislo]
+outputPrecision = {
+                   'cr_stress': [6, 1.0e-6],     # MPa
+                   'cr_deform': [6],
+                   'co_stress': [5, 1.0e-6],     # MPa
+                   'co_shear' : [5],
+                   'co_dislo' : [5, 1.0e-6],     # mm^-2
+                   'others'   : [5]
+                 }
+
 
 # -----------------------------
 class vector:   # mimic py_post node object
@@ -1084,7 +1081,7 @@ for incCount,position in enumerate(locations):     # walk through locations
                       +'"%(dirname + os.sep + options.prefix + os.path.split(filename)[1],increments[incCount],options.suffix)')
   else:
     outFilename = '%s.txt'%(dirname + os.sep + options.prefix + os.path.split(filename)[1] + options.suffix)
-  
+
   if not fileOpen:
     file = open(outFilename,'w')
     fileOpen = True
@@ -1179,6 +1176,23 @@ for incCount,position in enumerate(locations):     # walk through locations
       for chunk in newby:
         mappedResult[pos:pos+chunk['len']] = mapIncremental(chunk['label'],options.func,
                                                             N,mappedResult[pos:pos+chunk['len']],chunk['content'])
+
+        result2str = False
+        for var in allVariables:
+            if chunk['label'] in var:
+                writePrecision = outputPrecision[var[-1]]
+                if writePrecision[0] != writePrecision[-1]:
+                    # needs to scale the unit
+                    mappedResult[pos:pos+chunk['len']] = [i*writePrecision[-1] for i in mappedResult[pos:pos+chunk['len']]]
+                for ip in xrange(chunk['len']):
+                    mappedResult[pos+ip] = format(mappedResult[pos+ip], '.%se'%writePrecision[0]) if len(str(mappedResult[pos+ip])) > \
+                    writePrecision[0] else str(mappedResult[pos+ip])
+
+                result2str = True
+
+        if not result2str:
+            mappedResult = map(str, mappedResult)
+
         pos += chunk['len']
 
       N += 1
@@ -1189,13 +1203,11 @@ for incCount,position in enumerate(locations):     # walk through locations
       file.write('\t'.join(standard + header) + '\n')
       headerWritten = True
     
-    print header
-    print mappedResult[0]*1.0
 
     file.write('\t'.join(map(str,[p.increment] + \
                                  {True:[p.time],False:[]}[options.time] + \
-                                 group[0] + \
-                                 mappedResult)
+                                 group[0]) + \
+                                 mappedResult
                         ) + '\n')
     
 if fileOpen:
