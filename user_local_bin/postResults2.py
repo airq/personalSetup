@@ -4,6 +4,7 @@
 import os,sys,math,re,time,struct,string
 import damask
 from optparse import OptionParser, OptionGroup
+from myLibs import allVariables, outputPrecision
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -12,35 +13,6 @@ scriptID   = ' '.join([scriptName,damask.version])
 fileExtensions = { \
                    'marc': ['.t16',],
                    'spectral': ['.spectralOut',],
-                 }
-
-# the last one must be the name of the tuple.
-cr_stress = ('p', 's', 'cr_stress')
-cr_deform = ('f', 'fe', 'fp', 'e', 'ee', 'lp', 'cr_deform')
-cr_orient = ( 'eulerangles', 'grainrotation', 'cr_orient')
-co_stress = ( 'resistance_slip', 'resolvedstress_slip',
-              'resistance_twin', 'resolvedstress_twin',
-              'thresholdstress_twin',
-              'flowstress',
-              'co_stress'
-            )
-co_shear  = ( 'shearrate_slip', 'accumulatedshear_slip', 'totalshear',
-              'shearrate_twin', 'accumulatedshear_twin',
-              'strainrate',
-              'co_shear'
-            )
-co_dislo =  ( 'edge_density', 'dipole_density',
-              'co_dislo'
-            )
-
-allVariables = [cr_stress, cr_deform, cr_orient, co_stress, co_shear, co_dislo]
-outputPrecision = {
-                   'cr_stress': [6, 1.0e-6],     # MPa
-                   'cr_deform': [6],
-                   'co_stress': [5, 1.0e-6],     # MPa
-                   'co_shear' : [5],
-                   'co_dislo' : [5, 1.0e-6],     # mm^-2
-                   'others'   : [5]
                  }
 
 
@@ -672,63 +644,72 @@ of already processed data points for evaluation.
 
 """, version = scriptID)
 
-parser.add_option('-i','--info', action='store_true', dest='info', \
+parser.add_option('-i','--info', action='store_true', dest='info',
                   help='list contents of resultfile [%default]')
-parser.add_option('-l','--legacy', action='store_true', dest='legacy', \
+parser.add_option('-l','--legacy', action='store_true', dest='legacy',
                   help='data format of spectral solver is in legacy format (no MPI out)')
-parser.add_option('-n','--nodal', action='store_true', dest='nodal', \
+parser.add_option('-n','--nodal', action='store_true', dest='nodal',
                   help='data is extrapolated to nodal value [%default]')
-parser.add_option(    '--prefix', dest='prefix', \
+parser.add_option(    '--prefix', dest='prefix',
+                  metavar='string',
                   help='prefix to result file name [%default]')
-parser.add_option(    '--suffix', dest='suffix', \
+parser.add_option(    '--suffix', dest='suffix',
+                  metavar='string',
                   help='suffix to result file name [%default]')
-parser.add_option('-d','--dir', dest='dir', \
+parser.add_option('-d','--dir', dest='dir',
+                  metavar='string',
                   help='name of subdirectory to hold output [%default]')
-parser.add_option('-s','--split', action='store_true', dest='separateFiles', \
+parser.add_option('-s','--split', action='store_true', dest='separateFiles',
                   help='split output per increment [%default]')
-parser.add_option('-r','--range', dest='range', type='int', nargs=3, \
+parser.add_option('-r','--range', dest='range', type='int', nargs=3,
+                  metavar='int int int',
                   help='range of positions (or increments) to output (start, end, step) [all]')
-parser.add_option('--increments', action='store_true', dest='getIncrements', \
+parser.add_option('--increments', action='store_true', dest='getIncrements',
                   help='switch to increment range [%default]')
-parser.add_option('-m','--map', dest='func', \
+parser.add_option('-m','--map', dest='func',
+                  metavar='string',
                   help='data reduction mapping [%default] out of min, max, avg, avgabs, sum, sumabs or user-lambda')
-parser.add_option('-p','--type', dest='filetype', \
+parser.add_option('-p','--type', dest='filetype',
+                  metavar = 'string',
                   help = 'type of result file [auto]')
+
+parser.add_option('--compress', action='store_false', dest='compress',
+                  help='compress the presion of the output data [%default]')
 
 group_material = OptionGroup(parser,'Material identifier')
 
-group_material.add_option('--homogenization', dest='homog', \
-                          help='homogenization identifier (as string or integer [%default])', metavar='<ID>')
-group_material.add_option('--crystallite', dest='cryst', \
-                          help='crystallite identifier (as string or integer [%default])', metavar='<ID>')
-group_material.add_option('--phase', dest='phase', \
-                          help='phase identifier (as string or integer [%default])', metavar='<ID>')
+group_material.add_option('--homogenization', dest='homog',
+                          help='homogenization identifier (as string or integer [%default])', metavar='string')
+group_material.add_option('--crystallite', dest='cryst',
+                          help='crystallite identifier (as string or integer [%default])', metavar='string')
+group_material.add_option('--phase', dest='phase',
+                          help='phase identifier (as string or integer [%default])', metavar='string')
 
 group_special  = OptionGroup(parser,'Special outputs')
 
-group_special.add_option('-t','--time', action='store_true', dest='time', \
+group_special.add_option('-t','--time', action='store_true', dest='time',
                          help='output time of increment [%default]')
-group_special.add_option('-f','--filter', dest='filter', \
-                         help='condition(s) to filter results [%default]', metavar='<CODE>')
-group_special.add_option('--separation', action='extend', dest='sep', \
-                         help='properties to separate results [%default]', metavar='<LIST>')
-group_special.add_option('--sort', action='extend', dest='sort', \
-                         help='properties to sort results [%default]', metavar='<LIST>')
+group_special.add_option('-f','--filter', dest='filter',
+                         help='condition(s) to filter results [%default]', metavar='string')
+group_special.add_option('--separation', action='extend', dest='sep',
+                         help='properties to separate results [%default]', metavar='<string LIST>')
+group_special.add_option('--sort', action='extend', dest='sort',
+                         help='properties to sort results [%default]', metavar='<string LIST>')
 
 group_general  = OptionGroup(parser,'General outputs')
 
-group_general.add_option('--ns', action='extend', dest='nodalScalar', \
-                         help='nodal scalars to extract', metavar='<LIST>')
-group_general.add_option('--es', action='extend', dest='elemScalar', \
-                         help='elemental scalars to extract', metavar='<LIST>')
-group_general.add_option('--et', action='extend', dest='elemTensor', \
-                         help='elemental tensors to extract', metavar='<LIST>')
-group_general.add_option('--ho', action='extend', dest='homogenizationResult', \
-                         help='homogenization results to extract', metavar='<LIST>')
-group_general.add_option('--cr', action='extend', dest='crystalliteResult', \
-                         help='crystallite results to extract', metavar='<LIST>')
-group_general.add_option('--co', action='extend', dest='constitutiveResult', \
-                         help='constitutive results to extract', metavar='<LIST>')
+group_general.add_option('--ns', action='extend', dest='nodalScalar',
+                         help='nodal scalars to extract', metavar='<string LIST>')
+group_general.add_option('--es', action='extend', dest='elemScalar',
+                         help='elemental scalars to extract', metavar='<string LIST>')
+group_general.add_option('--et', action='extend', dest='elemTensor',
+                         help='elemental tensors to extract', metavar='<string LIST>')
+group_general.add_option('--ho', action='extend', dest='homogenizationResult',
+                         help='homogenization results to extract', metavar='<string LIST>')
+group_general.add_option('--cr', action='extend', dest='crystalliteResult',
+                         help='crystallite results to extract', metavar='<string LIST>')
+group_general.add_option('--co', action='extend', dest='constitutiveResult',
+                         help='constitutive results to extract', metavar='<string LIST>')
 
 parser.add_option_group(group_material)
 parser.add_option_group(group_general)
@@ -752,6 +733,7 @@ parser.set_defaults(inc = False)
 parser.set_defaults(time = False)
 parser.set_defaults(separateFiles = False)
 parser.set_defaults(getIncrements= False)
+parser.set_defaults(compress = True)
 
 (options, files) = parser.parse_args()
 
@@ -789,7 +771,7 @@ if options.filetype not in ['marc','spectral']:
 
 if options.filetype == 'marc':
   sys.path.append(damask.solver.Marc().libraryPath('../../'))
-  
+
   try:
     from py_post import post_open
   except:
@@ -833,7 +815,7 @@ else:
   extension = os.path.splitext(files[0])[1]
 
 outputFormat = {}
-me = {  
+me = { 
       'Homogenization': options.homog,
       'Crystallite':    options.cryst,
       'Constitutive':   options.phase,
@@ -846,7 +828,7 @@ for what in me:
   if '_id' not in outputFormat[what]['specials']:
     print "\nsection '%s' not found in <%s>"%(me[what], what)
     print '\n'.join(map(lambda x:'  [%s]'%x, outputFormat[what]['specials']['brothers']))
-    
+
 bg.set_message('opening result file...')
 p = OpenPostfile(filename+extension,options.filetype,options.nodal)
 bg.set_message('parsing result file...')
@@ -1032,11 +1014,8 @@ fileOpen = False
 assembleHeader = True
 header = []
 standard = ['inc'] + \
-           {True: ['time'],
-            False:[]}[options.time] + \
-           ['elem','node','ip','grain'] + \
-           {True: ['1_nodeinitialcoord','2_nodeinitialcoord','3_nodeinitialcoord'],
-            False:['1_ipinitialcoord','2_ipinitialcoord','3_ipinitialcoord']}[options.nodalScalar != []]
+           (['time'] if options.time else []) + \
+           ['elem','node','ip','grain','1_pos','2_pos','3_pos']
 
 # ---------------------------   loop over positions   --------------------------------
 
@@ -1093,9 +1072,10 @@ for incCount,position in enumerate(locations):     # walk through locations
   file.flush()
 
 # ---------------------------   read and map data per group   --------------------------------
-  member = 0
 
+  member = 0
   for group in groups:
+
     N = 0                                                                          # group member counter
     for (e,n,i,g,n_local) in group[1:]:                                            # loop over group members
       member += 1
@@ -1176,22 +1156,24 @@ for incCount,position in enumerate(locations):     # walk through locations
       for chunk in newby:
         mappedResult[pos:pos+chunk['len']] = mapIncremental(chunk['label'],options.func,
                                                             N,mappedResult[pos:pos+chunk['len']],chunk['content'])
+        if options.compress:
+          result2str = False
+          for var in allVariables:
+              if chunk['label'] in var:
+                  writePrecision = outputPrecision[var[-1]]
+                  if writePrecision[0] != writePrecision[1]:
+                      # needs to scale the unit
+                      mappedResult[pos:pos+chunk['len']] = [i*writePrecision[1] for i in mappedResult[pos:pos+chunk['len']]]
 
-        result2str = False
-        for var in allVariables:
-            if chunk['label'] in var:
-                writePrecision = outputPrecision[var[-1]]
-                if writePrecision[0] != writePrecision[-1]:
-                    # needs to scale the unit
-                    mappedResult[pos:pos+chunk['len']] = [i*writePrecision[-1] for i in mappedResult[pos:pos+chunk['len']]]
-                for ip in xrange(chunk['len']):
-                    mappedResult[pos+ip] = format(mappedResult[pos+ip], '.%se'%writePrecision[0]) if len(str(mappedResult[pos+ip])) > \
-                    writePrecision[0] else str(mappedResult[pos+ip])
+                  for ip in xrange(chunk['len']):
+                      mappedResult[pos+ip] = format(mappedResult[pos+ip], writePrecision[2]%writePrecision[0]) if len(str(mappedResult[pos+ip])) > \
+                      writePrecision[0]+2 else str(mappedResult[pos+ip])
+                  result2str = True
 
-                result2str = True
-
-        if not result2str:
-            mappedResult = map(str, mappedResult)
+          if not result2str:
+            mappedResult[pos:pos+chunk['len']] = map(str, mappedResult[pos:pos+chunk['len']])
+        else:
+          mappedResult[pos:pos+chunk['len']] = map(str, mappedResult[pos:pos+chunk['len']])
 
         pos += chunk['len']
 
@@ -1202,14 +1184,13 @@ for incCount,position in enumerate(locations):     # walk through locations
     if not headerWritten:
       file.write('\t'.join(standard + header) + '\n')
       headerWritten = True
-    
 
     file.write('\t'.join(map(str,[p.increment] + \
                                  {True:[p.time],False:[]}[options.time] + \
                                  group[0]) + \
                                  mappedResult
                         ) + '\n')
-    
+
 if fileOpen:
   file.close()
 
