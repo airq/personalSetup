@@ -94,8 +94,15 @@ for filename in filenames:
         mapFFTWgrain2GEOMgrain[str(ifftw)] = ig if options.dimension == 2 else ifftw
     noGrains = max (grainSet)
 
-    for i in xrange(maxPhase):
-        maxGrainInPhasei = max(set(grainGroup[i]))
+    maxGrainInPhases = []
+    for ip in xrange(maxPhase):
+        maxGrainInPhasei = 1 if options.precipPhase == ip else max(set(grainGroup[i])) 
+
+        igstart = sum(maxGrainInPhases)
+        for ifftw, ig in enumerate(set(grainGroup[ip]):)
+            mapFFTWgrain2GEOMgrain[i][str(ifftw))] = igstart+1 if ip == options.precipPhase else igstart+ig+1
+
+        maxGrainInPhases.append( maxGrainsInPhasei )
 
 
 
@@ -122,12 +129,37 @@ for filename in filenames:
     fout.write('homogenization  %i\n'%homogenization)
     fout.write('microstructures %i\n'%options.microstructure)
 
-    mapGrid2Grain = np.empty([grid[0],grid[1],grid[2]], dtype=int)
-    for i in xrange(len(content)-maxGrid, len(content)):
-        words = content[i].split()
-        mapGrid2Grain[int(words[2]), int(words[3]), int(words[4])] = int(words[1])
+    for iz in xrange(gridZmax):
+        for iy in xrange(gridYmax):
+            fout.write(' '.join() + '\n')
 
     for iz in xrange(grid[2]):
+        iystart = iz*gridYmax*gridXmax
         for iy in xrange(grid[1]):
-            fout.write(' '.join( str(mapGrid2Grain[ix, iy, iz]) for ix in xrange(grid[0]) ) + '\n')
+            ixstart = iystart + iy*gridXmax
+            gout.write(' '.join( str(mapFFTWgrain2GEOMgrain[phases[ixstart+ix]][str(grains[ixstart+ix])]) 
+                for ix in xrange(gridXmax) ) + '\n')
 
+    for 
+        mout.write
+
+        ngrain= np.max(gridPosition)
+        a.write('#----------------#\n')
+        a.write('<microstructure>\n')
+        a.write('#----------------#\n')
+        for i in  xrange(ngrain):
+            #phase = 2 if coarse[i] else 1]
+            phase = 1
+            a.write('[Grain%s]\n'%str(i))
+            a.write('crystallite 1\n')
+            a.write('(constituent)  phase %s texture %s fraction 1.0\n'%(str(phase), str(i)) )
+
+        a.write('\n')
+        a.write('#----------------#\n')
+        a.write('<texture>\n')
+        a.write('#----------------#\n')
+        for i in  xrange(ngrain):
+            eulerangles = np.random.rand(3)*np.array([360.0, 180.0, 360.0])
+            a.write('[Texture%s]\n'%str(i))
+            a.write('(gauss)  phi1 %s Phi %s phi2 %s scatter 0.0 fraction 1.0\n'\
+               %(str(eulerangles[0]), str(eulerangles[1]), str(eulerangles[2])) )
