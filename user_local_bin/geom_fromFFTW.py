@@ -46,6 +46,7 @@ for filename in filenames:
 
     line = fopen.readline()
 
+    # ---------read the data
     eulerangles = []; phases = []; grains = []; grids = []
     while line:
         conten = line.split()
@@ -54,39 +55,59 @@ for filename in filenames:
         grains.append( map( int, content[6], ))
         phases.append( map( int, content[7]) )
 
+
     eulerangles = np.array(eulerangles)
     grid = np.array(grid)
     grains = np.array(grains)
     phases = np.array(phases)
 
+    # ---------adjust gridZmax according to the dimension
     gridXmax, gridYmax, gridZmax = [ np.max(grid[:,i]) for i in xrange(3) ]
     if options.dimension == 2: gridZmax = 1
     dataLength = gridXmax*gridYmax*gridZmax
 
-
-
+    # ---------group the data in case of different phases
     maxPhase = np.max(phases[0:dataLength]); phaseGroup = [ [] ]*maxPhase
-    grainGroup = [ [] ]*maxPhase
-    mapFFTWgrain2GEOMgrain = [ {} ]*maxPhase
+    grainNum = len(set(grains[0:dataLength]))
+    phaseNum = len(set(phases[0:dataLength]))
 
+    grainMap = {}; phaseMap = {}
+    phaseGroup = {}
+    for i,grain in enumerate(set(grains[0:dataLength])):
+        grainMap[str(grain)] = i+1
+
+    i = 0
+    for phase in set(phases[0:dataLength]):
+        if phase == options.phase: continue
+        i = i+1
+        phaseMap[str(phase)] = i
+
+    phaseMap[str(options.phase)] = phaseNum
+
+    phaseGroup 
+
+    grainGroup = [ [] ]*phaseNum
+    mapFFTWgrain2GEOMgrain = [ {} ]*phaseNum
 
     for i in xrange(dataLength):
         phaseGroup[ phases[i]-1  ].append( i )
         grainGroup[ phases[i]-1  ].append( grains[i] )
 
+    # ---------
     for iph in xrange(maxPhase):
 
         # count the total number of grains in the wanted volume
         grainSet = set( grainGroup[iph] )
         # avg the euler angles in the same grains
-        noGrains = 
-        mereEuler = np.zeros([noGrains, 3], dtype=float) 
+        noGrains = len(grainSet)
+        mergeEuler = np.zeros([noGrains, 3], dtype=float) 
         grainSize  = np.zeros(noGrains, dtype=int)
 
     avgEulerGroup = []; grainSizeGroup = []
     for i in xrange(dataLength):
         avgEuler[ grains[i] - 1 ] += eulerangles[i]
         grainSize[ grains[i] - 1 ] += 1
+
     for i in  noGrains:
         avgEuler[i] = avgEuler[i]/float(grainSize[i])
 

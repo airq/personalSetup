@@ -11,14 +11,14 @@ import os,sys,math
 import numpy as np
 
 # the last one must be the name of the tuple.
-cr_stress = ('p', 's', 'cr_stress')
+cr_stress = ('p', 's', 'work', 'cr_stress')
 cr_deform = ('f', 'fe', 'fp', 'e', 'ee', 'lp', 'cr_deform')
 cr_orient = ( 'eulerangles', 'grainrotation', 'cr_orient')
 co_stress = ( 'resistance_slip', 'resolvedstress_slip',
               'resistance_twin', 'resolvedstress_twin',
               'thresholdstress_twin',
               'flowstress',
-              'co_stress'
+              'co_stress',
             )
 co_shear  = ( 'shearrate_slip', 'accumulatedshear_slip', 'totalshear',
               'shearrate_twin', 'accumulatedshear_twin',
