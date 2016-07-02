@@ -27,7 +27,7 @@ def getElemConnectFFTW(ipcoords, elemList):
 
     print 'Infos of the elements of the input file: total row = %s, total column = %s, nrow*ncol = %s, total element is %s'%(maxRow, maxCol, maxRow*maxCol, len(elemList))
     if maxRow*maxCol != len(elemList):
-        print 'total element is not equal to nrow*nrol!'
+        print '*****************total element is not equal to nrow*nrol!*************************'
 
     elemPosition = np.empty_like(ipcoords, dtype=int)
     mapPosElemNo = np.empty([maxCol, maxRow], dtype=int)
@@ -103,7 +103,7 @@ parser.add_option('-r', '--ratio',      dest='ebsdStepRatio', type='int', metava
 parser.add_option("--mat", metavar = '<string LIST>', dest="materials", action='extend',
                   help="list of materials for phase 1, phase2, ... [%default] ['Al','Mg']")
 parser.add_option('-p', '--phase',      dest='phase', type='int', metavar = 'int',
-                  help='homogenization index for <microstructure> configuration [%default]')
+                  help='the ascii file should contain the label phase, else the phase of all grids is [%default]')
 
 parser.add_option('-a', '--axis',       dest='surface', type='string', metavar = 'string',
                   help='The surface will be plotted [%default]')
@@ -125,11 +125,12 @@ axisPositionList = {'x': ['2', '3'], 'y': ['1', '3'], 'z': ['1', '2']}
 axisPos = axisPositionList [options.surface]
 
 eulerFormatOut='%%%i.%if'%(int(options.precision)+4,int(options.precision))
-print eulerFormatOut
+
 if filenames == []:
     print 'missing the input file, please specify a geom file!'
 else:
-    getInitialTopology = False    # get the initial coordinates and the connectivity
+    # get the initial coordinates and the connectivity
+    getInitialTopology = False
 
     for filename in filenames:
         fileCurrentIpCoordsFile = 'mesh_' + os.path.splitext(filename)[0] + '.vtk'
@@ -140,13 +141,15 @@ else:
 
             fopen = open(filename, 'r')
             line = fopen.readline()
-            header = int(line.split()[0])
+            header = int(line.split()[0])  # the number of header
             counter = 0
 
+            print 'process file %s'%filename
             print 'get the the coordinates, phase, eulerangles of IPs'
             while line:
                 texts = line.split()
                 if counter == header:
+                    # get the index of the labels in the ascii file
                     if all(text in line for text in keywords):
                         ipcoordsInitIndex = texts.index( axisPos[0]+keywords[0] ), texts.index( axisPos[1]+keywords[0] )
                         euleranglesIndex  = texts.index('1'+keywords[1])
@@ -156,18 +159,21 @@ else:
                         print 'euler angles are not found in the input files'
                         exit()
 
-                # get Ip coordinates and eulerangles
+                # get Ip (init) coordinates and eulerangles
                 if counter > header:
                     elemList.append( int(texts[elemIndex]) )
                     euleranglesList.append( [float(texts[euleranglesIndex + i]) for i in xrange(3) ] )
-                    phaseList.append( int(texts[phaseIndex]) if phaseIndex > -1 else options.phase )
-                    if not getInitialTopology:  ipcoordsInitList.append( [float(texts[i]) for i in ipcoordsInitIndex ] )
+                    phaseList.append( int(float(texts[phaseIndex])) if phaseIndex > -1 else options.phase )
+                    if not getInitialTopology:
+                        ipcoordsInitList.append( [float(texts[i]) for i in ipcoordsInitIndex ] )
 
                 line = fopen.readline()
                 counter += 1
 
             nelem = len(elemList)
             eulerangles = np.empty([nelem, 3])
+            print 'the ascii file contains %i element'%nelem
+
             if not getInitialTopology: ipcoordsInit = np.empty([nelem, 2])
 
             for i in xrange(nelem):
@@ -203,8 +209,8 @@ else:
                     rowLower, rowUpper = int( (yNeg/ebsdStepY) ), int( (yPos/ebsdStepY) )
                     colLeft,  colRight = int( (xNeg/ebsdStepX) ), int( (xPos/ebsdStepX) )
 
-                    for irow in xrange(rowLower, rowUpper):
-                        for jcol in xrange(colLeft, colRight):
+                    for irow in xrange(rowLower, rowUpper+1):
+                        for jcol in xrange(colLeft, colRight+1):
                             mapEBSDgrid2Elems[ jcol, irow ] = elemList[elem]
 
                 # write ctf format ebsd data
@@ -225,4 +231,4 @@ else:
                                       eulerFormatOut+'\t'+eulerFormatOut+'\t'+eulerFormatOut+'\t0.5\t50\t0\n')%(eulerAngs[0],eulerAngs[1],eulerAngs[2]))
                 angFile.close()
         else:
-            print 'the input file %s is not found'
+            print 'the input file %s is not found'%filename
