@@ -48,14 +48,61 @@ def getIpsEffectDomain(nodeCoords, maxRow, maxCol):
     eleDomain = np.empty( [ maxCol, maxRow, 4] ) # left, right, lower, upper/ x-, x+, y-, y+
     minNodeCoordsX = np.min( nodeCoords[0, :, 0] ) # xmin, search in first column
     minNodeCoordsY = np.min( nodeCoords[:, 0, 1] ) # ymin, search in first row
-    maxNodeCoordsX = np.max( nodeCoords[-1, :, 0] ) - minNodeCoordsX # xmax, search in the last column
-    maxNodeCoordsY = np.max( nodeCoords[:, -1, 1] ) - minNodeCoordsY # ymax, search in the last row
+    #maxNodeCoordsX = np.max( nodeCoords[-1, :, 0] )# - minNodeCoordsX # xmax, search in the last column
+    #maxNodeCoordsY = np.max( nodeCoords[:, -1, 1] )# - minNodeCoordsY # ymax, search in the last row
 
+    shape = np.shape(nodeCoords)
+    if shape[0]!=maxCol+1: print '-----------Error, the dimension 1 of nodeCoords should be maxCol+1'
+    if shape[1]!=maxRow+1: print '-----------Error, the dimension 2 of nodeCoords should be maxRow+1'
 
     for irow in xrange(maxRow):
         for jcol in xrange(maxCol):
-            eleDomain[jcol, irow, 0:2 ] = nodeCoords[jcol, irow, 0]-minNodeCoordsX, nodeCoords[jcol+1, irow, 0]-minNodeCoordsX
-            eleDomain[jcol, irow, 2:4 ] = nodeCoords[jcol, irow, 1]-minNodeCoordsY, nodeCoords[jcol, irow+1, 1]-minNodeCoordsX
+            eleDomain[jcol, irow, 0:2 ] = 0.5*(nodeCoords[jcol, irow, 0]+nodeCoords[jcol, irow+1, 0]) - minNodeCoordsX, \
+                                          0.5*(nodeCoords[jcol+1, irow, 0]+nodeCoords[jcol+1, irow+1, 0]) - minNodeCoordsX
+
+            eleDomain[jcol, irow, 2:4 ] = 0.5*(nodeCoords[jcol, irow, 1]+nodeCoords[jcol+1, irow, 1]) - minNodeCoordsY, \
+                                          0.5*(nodeCoords[jcol, irow+1, 1]+nodeCoords[jcol+1, irow+1, 1]) - minNodeCoordsY
+    maxNodeCoordsX = np.max(eleDomain[:,:,1])
+    maxNodeCoordsY = np.max(eleDomain[:,:,3])
+    ##for irow in xrange(maxRow):
+        ##for jcol in xrange(maxCol):
+            ##eleDomain[jcol, irow, 0:2 ] = nodeCoords[jcol, irow, 0]-minNodeCoordsX, nodeCoords[jcol+1, irow, 0]-minNodeCoordsX
+            ##eleDomain[jcol, irow, 2:4 ] = nodeCoords[jcol, irow, 1]-minNodeCoordsY, nodeCoords[jcol, irow+1, 1]-minNodeCoordsX
+    #for irow in xrange(1, maxRow-1):
+        #for jcol in xrange(1, maxCol-1):
+            #eleDomain[jcol, irow, 0:2 ] = 0.5*(nodeCoords[jcol, irow, 0]+nodeCoords[jcol-1, irow, 0]), 0.5*(nodeCoords[jcol+1, irow,
+                #0]+nodeCoords[jcol,irow,0])
+            #eleDomain[jcol, irow, 2:4 ] = 0.5*(nodeCoords[jcol, irow, 1]+nodeCoords[jcol, irow-1, 1]), 0.5*(nodeCoords[jcol, irow+1,
+                #1]+nodeCoords[jcol,irow,1])
+#
+        ##eleDomain[0, irow, 0:2] = nodeCoords[0, irow, 0]-minNodeCoordsX, 0.5*(nodeCoords[1, irow, 0]+nodeCoords[0, irow, 0])
+        #eleDomain[0, irow, 0:2] = 1.5*nodeCoords[0, irow, 0]-0.5*nodeCoords[1, irow, 0], 0.5*(nodeCoords[1, irow, 0]+nodeCoords[0, irow, 0])
+        ##eleDomain[maxCol-1, irow, 0:2] = 0.5*(nodeCoords[maxCol-1, irow, 0]+nodeCoords[maxCol-2,irow,0]), nodeCoords[maxCol-1,irow,0]+minNodeCoordsX
+        #eleDomain[maxCol-1, irow, 0:2] = 0.5*(nodeCoords[maxCol-1, irow, 0]+nodeCoords[maxCol-2,irow,0]), 1.5*nodeCoords[maxCol-1,irow,0]- \
+        #0.5*nodeCoords[maxCol-2,irow,0]
+        #for jcol in [0, maxCol-1]:
+            #eleDomain[jcol, irow, 2:4 ] = 0.5*(nodeCoords[jcol, irow, 1]+nodeCoords[jcol, irow-1, 1]), 0.5*(nodeCoords[jcol, irow+1,
+                #1]+nodeCoords[jcol,irow,1])
+#
+    #for jcol in xrange(maxCol):
+        ##eleDomain[jcol, 0, 2:4] = nodeCoords[jcol, 0, 1]-minNodeCoordsY, 0.5*(nodeCoords[jcol, 1, 1]+nodeCoords[jcol, 0, 1])
+        #eleDomain[jcol, 0, 2:4] = 1.5*nodeCoords[jcol, 0, 1]-0.5*nodeCoords[jcol,1,1], 0.5*(nodeCoords[jcol, 1, 1]+nodeCoords[jcol, 0, 1])
+        ##eleDomain[jcol, maxRow-1, 2:4] = 0.5*(nodeCoords[jcol, maxRow-1, 1]+nodeCoords[jcol, maxRow-2, 1]), nodeCoords[jcol, maxRow-1,1] + minNodeCoordsY
+        #eleDomain[jcol, maxRow-1, 2:4] = 0.5*(nodeCoords[jcol, maxRow-1, 1]+nodeCoords[jcol, maxRow-2, 1]), 1.5*nodeCoords[jcol, maxRow-1,1] -\
+                #0.5*nodeCoords[jcol, maxRow-2, 1]
+        #if jcol == 0:
+            #for irow in [0, maxRow-1]:
+                ##eleDomain[jcol, irow, 0:2] = nodeCoords[jcol, irow, 0]-minNodeCoordsX, 0.5*(nodeCoords[jcol+1, irow, 0]+nodeCoords[jcol, irow, 0])
+                #eleDomain[jcol, irow, 0:2] = 1.5*nodeCoords[jcol, irow, 0]-0.5*nodeCoords[jcol+1, irow, 0], 0.5*(nodeCoords[jcol+1, irow, 0]+nodeCoords[jcol, irow, 0])
+        #elif jcol == maxCol-1:
+            #for irow in [0, maxRow-1]:
+                ##eleDomain[jcol, irow, 0:2] = 0.5*(nodeCoords[jcol, irow, 0]+nodeCoords[jcol-1,irow,0]), nodeCoords[jcol,irow,0]+minNodeCoordsX
+                #eleDomain[jcol, irow, 0:2] = 0.5*(nodeCoords[jcol, irow, 0]+nodeCoords[jcol-1,irow,0]), \
+                #1.5*nodeCoords[jcol,irow,0]-0.5*nodeCoords[jcol-1,irow,0]
+        #else:
+            #for irow in [0, maxRow-1]:
+                #eleDomain[jcol, irow, 0:2 ] = 0.5*(nodeCoords[jcol, irow, 0]+nodeCoords[jcol-1, irow, 0]), 0.5*(nodeCoords[jcol+1, irow,
+                    #0]+nodeCoords[jcol,irow,0])
 
     return eleDomain, maxNodeCoordsX, maxNodeCoordsY
 
@@ -144,7 +191,7 @@ else:
             header = int(line.split()[0])  # the number of header
             counter = 0
 
-            print 'process file %s'%filename
+            print '--------------------------------process file %s----------------------------------'%filename
             print 'get the the coordinates, phase, eulerangles of IPs'
             while line:
                 texts = line.split()
@@ -210,7 +257,9 @@ else:
                     colLeft,  colRight = int( (xNeg/ebsdStepX) ), int( (xPos/ebsdStepX) )
 
                     for irow in xrange(rowLower, rowUpper+1):
+                        if irow > ebsdCellY-1: irow = ebsdCellY-1
                         for jcol in xrange(colLeft, colRight+1):
+                            if jcol > ebsdCellX-1: jcol = ebsdCellX-1
                             mapEBSDgrid2Elems[ jcol, irow ] = elemList[elem]
 
                 # write ctf format ebsd data

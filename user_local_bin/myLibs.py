@@ -224,7 +224,7 @@ def getEBSDHeader(xCells,yCells,xStep, yStep, format, materials=['Al']):
     phasePrefix = \
       {
         'ang': '# Phase                 ',
-        'ctf': 'Phase\t'
+        'ctf': 'Phases\t'
       }
 
     sizeInfo = \

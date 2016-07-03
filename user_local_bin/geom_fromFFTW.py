@@ -9,27 +9,30 @@
 import os,sys,math
 import numpy as np
 from optparse import OptionParser
-from myLibs import ebsdInfo, readAngFile, readCtfFile
-import damask
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
-scriptID   = ' '.join([scriptName,damask.version])
 
 
 #-------------------------------------re-------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(usage='%prog options [file[s]]', description = """
 
 Generate geometry description and material configuration from EBSD data in given square-gridded 'ang' file.
 Two phases can be discriminated based on threshold value in a given data column.
 
-""", version = scriptID)
+""")
 
-parser.add_option('--microstructure',      dest='microstructure', type='int', metavar = 'int',
+parser.add_option('-p','--phase',      dest='phase', type='int', metavar = 'int',
                   help='homogenization index for <microstructure> configuration [%default]')
+parser.add_option('-d','--dimension',      dest='dimension', type='int', metavar = 'int',
+                  help='homogenization index for <microstructure> configuration [%default]')
+parser.add_option('-r', dest='randomOrient', action='store_true',
+                  help = '[%default]' )
 parser.set_defaults(
-                    microstructure = 100,
+                    phase = 2,
+                    dimension = 2,
+                    randomOrient = False,
                  )
 (options,filenames) = parser.parse_args()
 
@@ -43,112 +46,132 @@ for filename in filenames:
 
     fopen = open(filename, 'r')
     fout  = open(os.path.splitext(filename)[0] + '.geom','w')
+    matconfig = open(os.path.splitext(filename)[0] + '.matconfig','w')
 
     line = fopen.readline()
 
-    # ---------read the data
     eulerangles = []; phases = []; grains = []; grids = []
     while line:
-        conten = line.split()
+        content = line.split()
         eulerangles.append( map(float, content[0:3] ))
         grids.append( map( int, content[3:6] ))
-        grains.append( map( int, content[6], ))
-        phases.append( map( int, content[7]) )
-
+        grains.append( int(content[6]))
+        phases.append( int(content[7]) )
+        line = fopen.readline()
 
     eulerangles = np.array(eulerangles)
-    grid = np.array(grid)
+    grids = np.array(grids)
     grains = np.array(grains)
     phases = np.array(phases)
 
     # ---------adjust gridZmax according to the dimension
-    gridXmax, gridYmax, gridZmax = [ np.max(grid[:,i]) for i in xrange(3) ]
+    gridXmax, gridYmax, gridZmax = [ np.max(grids[:,i]) for i in xrange(3) ]
     if options.dimension == 2: gridZmax = 1
     dataLength = gridXmax*gridYmax*gridZmax
+    print dataLength, len(phases)
+    print set(phases)
 
     # ---------group the data in case of different phases
-    maxPhase = np.max(phases[0:dataLength]); phaseGroup = [ [] ]*maxPhase
-    grainNum = len(set(grains[0:dataLength]))
-    phaseNum = len(set(phases[0:dataLength]))
-
-    grainMap = {}; phaseMap = {}
-    phaseGroup = {}
-    for i,grain in enumerate(set(grains[0:dataLength])):
-        grainMap[str(grain)] = i+1
+    phaseMap = {}; grainInPhase = {}; grainMap = {}
 
     i = 0
     for phase in set(phases[0:dataLength]):
+        grainInPhase[str(phase)] = []
         if phase == options.phase: continue
         i = i+1
         phaseMap[str(phase)] = i
 
-    phaseMap[str(options.phase)] = phaseNum
+    phaseMap[str(options.phase)] = i+1 # the precipation phase is arranged at the end
 
-    phaseGroup 
-
-    grainGroup = [ [] ]*phaseNum
-    mapFFTWgrain2GEOMgrain = [ {} ]*phaseNum
+    print phaseMap
 
     for i in xrange(dataLength):
-        phaseGroup[ phases[i]-1  ].append( i )
-        grainGroup[ phases[i]-1  ].append( grains[i] )
+        grainInPhase[str(phases[i])].append(grains[i]) # stores the fftw grain no.
 
-    # ---------
-    for iph in xrange(maxPhase):
+    # renumber the grains and average the euler angles according to the belonged phase
+    #print grainInPhase
+    ngrain = 0
+    for phase in phaseMap.keys():
+        grainInPhase[phase] = set(grainInPhase[phase])
+        if phase == str(options.phase): continue
+        for ig in grainInPhase[phase]:
+            ngrain += 1
+            grainMap[str(ig)] = ngrain
+            print ngrain, phase
+    print grainInPhase
 
-        # count the total number of grains in the wanted volume
-        grainSet = set( grainGroup[iph] )
-        # avg the euler angles in the same grains
-        noGrains = len(grainSet)
-        mergeEuler = np.zeros([noGrains, 3], dtype=float) 
-        grainSize  = np.zeros(noGrains, dtype=int)
+    # renumber the grains of the precipation phase(the same grain)
+    if str(options.phase) in grainInPhase.keys():
+        ngrain += 1
+        for ig in set(grainInPhase[str(options.phase)]):
+            grainMap[str(ig)] = ngrain
 
-    avgEulerGroup = []; grainSizeGroup = []
+    print grainMap, ngrain
+
+    # calculate the average Euler angles
+    avgEulerAngles = {}; grainSize = {}
+    for ig in set(grains[1:dataLength]):
+        avgEulerAngles[str(ig)] = np.zeros(3, dtype=float)
+        grainSize[str(ig)] = 0
+
     for i in xrange(dataLength):
-        avgEuler[ grains[i] - 1 ] += eulerangles[i]
-        grainSize[ grains[i] - 1 ] += 1
+        avgEulerAngles[str(grains[i])] += eulerangles[i]
+        grainSize[str(grains[i])] += 1
 
-    for i in  noGrains:
-        avgEuler[i] = avgEuler[i]/float(grainSize[i])
+    for ig in avgEulerAngles.keys():
+        avgEulerAngles[ig] = avgEulerAngles[ig]/float(grainSize[ig])
 
-    for ifftw,ig in enumerate( grainSet ):
-        mapFFTWgrain2GEOMgrain[str(ifftw)] = ig if options.dimension == 2 else ifftw
-    noGrains = max (grainSet)
-
-    for i in xrange(maxPhase):
-        maxGrainInPhasei = max(set(grainGroup[i]))
-
-
-
-
-    print 'there are %i phases in the model'%maxPhase
-    for i in xrange(maxPhase):
-        print 'the volume fraction of phase %i is: %f'%(i+1, )
-
-
-
-    content = fopen.readlines()
-    grid = [int(content[i].split()[1]) for i in range(5,8)]
-    maxGrid = int(content[3].split()[0])
+    grid = gridXmax, gridYmax, gridZmax
     origin = (0,0,0)
     size = [i*0.05 for i in grid]
     homogenization = 1
 
 #-- report ---------------------------------------------------------------------------------------
+    print 'write geom file'
     fout.write('6   header\n')
-    fout.write('This model is generated by Sppark\n')
+    fout.write('This model is generated by fftw\n')
     fout.write('grid     a %s  b %s  c %s\n'%(str(grid[0]), str(grid[1]), str(grid[2]) ))
     fout.write('size     x %s  y %s  z %s\n'%(str(size[0]), str(size[1]), str(size[2]) ))
     fout.write('origin   x 0.0 y 0.0 z 0.0\n')
     fout.write('homogenization  %i\n'%homogenization)
-    fout.write('microstructures %i\n'%options.microstructure)
-
-    mapGrid2Grain = np.empty([grid[0],grid[1],grid[2]], dtype=int)
-    for i in xrange(len(content)-maxGrid, len(content)):
-        words = content[i].split()
-        mapGrid2Grain[int(words[2]), int(words[3]), int(words[4])] = int(words[1])
+    fout.write('microstructures %i\n'%ngrain)
 
     for iz in xrange(grid[2]):
+        iystart = iz*grid[1]*grid[0]
         for iy in xrange(grid[1]):
-            fout.write(' '.join( str(mapGrid2Grain[ix, iy, iz]) for ix in xrange(grid[0]) ) + '\n')
+            ixstart = iystart + iy*grid[0]
+            fout.write(' '.join( [ str( grainMap[str( grains[ix+ixstart] )] ) for ix in xrange(grid[0]) ] ) + '\n')
 
+    # resort the list according to value
+    grainNo = sorted(grainMap.iteritems(), key = lambda x:x[1] )
+
+    print grainNo
+
+    print 'write material.config file'
+    print 'write microstructure'
+    matconfig.write('#----------------#\n')
+    matconfig.write('<microstructure>\n')
+    matconfig.write('#----------------#\n')
+    for i in  xrange(ngrain):
+        grainNoInfftw = grainNo[i][0]
+        for ip in phaseMap.keys():
+            if grainNoInfftw in grainInPhase[ip]: phase = phaseMap[ip]
+
+        matconfig.write('[Grain%s]\n'%str(i+1))
+        matconfig.write('crystallite 1\n')
+        matconfig.write('(constituent)  phase %s texture %s fraction 1.0\n'%(str(phase), str(i+1)) )
+
+    matconfig.write('\n')
+    print 'write texture'
+    matconfig.write('#----------------#\n')
+    matconfig.write('<texture>\n')
+    matconfig.write('#----------------#\n')
+    for i in  xrange(ngrain):
+        if options.randomOrient:
+            eulerangle = np.random.rand(3)*np.array([360.0, 180.0, 360.0])
+        else:
+            grainNoInfftw = grainNo[i][0]
+            eulerangle = avgEulerAngles[grainNoInfftw]
+        matconfig.write('[Texture%s]\n'%str(i+1))
+        matconfig.write('(gauss)  phi1 %7.3f Phi %7.3f phi2 %7.3f scatter 0.0 fraction 1.0\n'\
+           %(eulerangle[0], eulerangle[1], eulerangle[2]) )
