@@ -68,8 +68,6 @@ for filename in filenames:
     gridXmax, gridYmax, gridZmax = [ np.max(grids[:,i]) for i in xrange(3) ]
     if options.dimension == 2: gridZmax = 1
     dataLength = gridXmax*gridYmax*gridZmax
-    print dataLength, len(phases)
-    print set(phases)
 
     # ---------group the data in case of different phases
     phaseMap = {}; grainInPhase = {}; grainMap = {}
@@ -83,13 +81,10 @@ for filename in filenames:
 
     phaseMap[str(options.phase)] = i+1 # the precipation phase is arranged at the end
 
-    print phaseMap
-
     for i in xrange(dataLength):
         grainInPhase[str(phases[i])].append(grains[i]) # stores the fftw grain no.
 
     # renumber the grains and average the euler angles according to the belonged phase
-    #print grainInPhase
     ngrain = 0
     for phase in phaseMap.keys():
         grainInPhase[phase] = set(grainInPhase[phase])
@@ -97,16 +92,12 @@ for filename in filenames:
         for ig in grainInPhase[phase]:
             ngrain += 1
             grainMap[str(ig)] = ngrain
-            print ngrain, phase
-    print grainInPhase
 
     # renumber the grains of the precipation phase(the same grain)
     if str(options.phase) in grainInPhase.keys():
         ngrain += 1
         for ig in set(grainInPhase[str(options.phase)]):
             grainMap[str(ig)] = ngrain
-
-    print grainMap, ngrain
 
     # calculate the average Euler angles
     avgEulerAngles = {}; grainSize = {}
@@ -145,17 +136,17 @@ for filename in filenames:
     # resort the list according to value
     grainNo = sorted(grainMap.iteritems(), key = lambda x:x[1] )
 
-    print grainNo
-
     print 'write material.config file'
     print 'write microstructure'
     matconfig.write('#----------------#\n')
     matconfig.write('<microstructure>\n')
     matconfig.write('#----------------#\n')
     for i in  xrange(ngrain):
-        grainNoInfftw = grainNo[i][0]
+        grainNoInfftw = int(grainNo[i][0])
+
         for ip in phaseMap.keys():
-            if grainNoInfftw in grainInPhase[ip]: phase = phaseMap[ip]
+            if grainNoInfftw in grainInPhase[ip]:
+                 phase = phaseMap[ip]
 
         matconfig.write('[Grain%s]\n'%str(i+1))
         matconfig.write('crystallite 1\n')
