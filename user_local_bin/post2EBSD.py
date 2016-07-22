@@ -151,7 +151,8 @@ parser.add_option("--mat", metavar = '<string LIST>', dest="materials", action='
                   help="list of materials for phase 1, phase2, ... [%default] ['Al','Mg']")
 parser.add_option('-p', '--phase',      dest='phase', type='int', metavar = 'int',
                   help='the ascii file should contain the label phase, else the phase of all grids is [%default]')
-
+parser.add_option('-o', '--onlyphase',      dest='onlyphase', type='int', metavar = 'int',
+                  help='only the specified phase will be extracted, must also specify --phase [%default]')
 parser.add_option('-a', '--axis',       dest='surface', type='string', metavar = 'string',
                   help='The surface will be plotted [%default]')
 
@@ -163,6 +164,7 @@ parser.set_defaults( ebsdStepRatio = 2,
                      surface       = 'z',
                      materials      = ['Al'],
                      precision      = '3',
+                     onlyphase     = 0,
                    )
 
 (options,filenames) = parser.parse_args()
@@ -206,13 +208,25 @@ else:
                         print 'euler angles are not found in the input files'
                         exit()
 
+                    if options.onlyphase > 0 and phaseIndex == -1:
+                        print 'no phase in the ascill file, the option -o requires the ascill file containing phase info.'
+                        exit()
+
                 # get Ip (init) coordinates and eulerangles
                 if counter > header:
-                    elemList.append( int(texts[elemIndex]) )
-                    euleranglesList.append( [float(texts[euleranglesIndex + i]) for i in xrange(3) ] )
-                    phaseList.append( int(float(texts[phaseIndex])) if phaseIndex > -1 else options.phase )
-                    if not getInitialTopology:
-                        ipcoordsInitList.append( [float(texts[i]) for i in ipcoordsInitIndex ] )
+                    if options.onlyphase > 0:
+                        if int(float(texts[phaseIndex])) == options.onlyphase:
+                            elemList.append( int(texts[elemIndex]) )
+                            euleranglesList.append( [float(texts[euleranglesIndex + i]) for i in xrange(3) ] )
+                            phaseList.append( int(float(texts[phaseIndex])) if phaseIndex > -1 else options.phase )
+                            if not getInitialTopology:
+                                ipcoordsInitList.append( [float(texts[i]) for i in ipcoordsInitIndex ] )
+                    else:
+                        elemList.append( int(texts[elemIndex]) )
+                        euleranglesList.append( [float(texts[euleranglesIndex + i]) for i in xrange(3) ] )
+                        phaseList.append( int(float(texts[phaseIndex])) if phaseIndex > -1 else options.phase )
+                        if not getInitialTopology:
+                            ipcoordsInitList.append( [float(texts[i]) for i in ipcoordsInitIndex ] )
 
                 line = fopen.readline()
                 counter += 1

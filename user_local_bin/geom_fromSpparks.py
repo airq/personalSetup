@@ -74,7 +74,12 @@ for filename in filenames:
     # read the input spparks file
     while line:
         if counter - lengthOfEachFile*(counter/lengthOfEachFile) > options.nheader-1:
-            words = map(int,line.split())
+            words = map(int,line.split()[:-1])
+            if float(line.split()[-1]) < 1.0:  # 2d gridz = 0.5
+                words.append(0)
+            else:
+                words.append(int(line.split()[-1]))
+
             mapGrid2Grain0[words[2], words[3], words[4]] = words[1]
             grainList.append(words[1])
 

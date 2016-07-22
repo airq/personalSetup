@@ -17,25 +17,6 @@ scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
 
 
-def getNeighborList(gridsEachSide, gird, ix,iy,iz):
-    '''find the nearest N(gridEachSide) neighbor grid around the given grid ix,iy,iz
-    gridsEachSide > 0
-    '''
-
-    ixStart = 0 if ix - gridsEachSide < 0 else ix - gridsEachSide
-    iyStart = 0 if iy - gridsEachSide < 0 else iy - gridsEachSide
-    izStart = 0 if iz - gridsEachSide < 0 else iz - gridsEachSide
-
-    ixEnd   = grid[0]-1 if ix + gridsEachSide > grid[0]-1 else ix + gridsEachSide
-    iyEnd   = grid[1]-1 if iy + gridsEachSide > grid[1]-1 else iy + gridsEachSide
-    izEnd   = grid[2]-1 if iz + gridsEachSide > grid[2]-1 else iz + gridsEachSide
-
-    return [
-            [ x for x in xrange(ixStart, ixEnd + 1) ],
-            [ y for y in xrange(iyStart, iyEnd + 1) ],
-            [ z for z in xrange(izStart, izEnd + 1) ],
-            ]
-
 #-------------------------------------re-------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
@@ -46,12 +27,8 @@ when the thickness of GB (-t) is smaller than 2, the option (-d) should be used.
 
 parser.add_option('-p','--phase',              dest='phase', type='int', metavar = 'int',
                   help='The phase in which the GBs will be generated [%default]')
-parser.add_option('--t1','--thick1',              dest='thick1', type='int', metavar = 'int',
-                  help='The half thickness of the GBs in the matrix [%default]')
-parser.add_option('--t2','--thick2',              dest='thick2', type='int', metavar = 'int',
-                  help='The half thickness of the GBs in the percipation [%default]')
-parser.add_option('--mg','--maxgrainmatrix',      dest='maxGrainInMatrix', type='int', metavar = 'int',
-                  help='The half thickness of the GBs in the percipation [%default]')
+parser.add_option('-t','--thick',              dest='thick', type='int', metavar = 'int',
+                  help='The half thickness of the GBs [%default]')
 parser.add_option('-m','--matconfig',              dest='matconfig', type='string', metavar = 'string',
                   help='The name of the microstructures file [%default]')
 parser.add_option('-d', '--diagonal', dest='diagonal', action='store_true',
@@ -61,9 +38,7 @@ parser.add_option('-n', '--number', dest='number', action='store_true',
                   else all grains have the same microstructure No., i.e., microstructures+1 [%default]")   
 
 parser.set_defaults( phase = 1,
-                     thick1 = 2,
-                     thick2 = 2,
-                     maxGrainInMatrix = 10000,
+                     thick = 2,
                      matconfig = 'None',
                      diagonal = False,
                      number   = False,
@@ -71,7 +46,6 @@ parser.set_defaults( phase = 1,
 
 (options,filenames) = parser.parse_args()
 
-thick = options.thick1
 # --- loop over input files -------------------------------------------------------------------------
 if filenames == []:
     print 'missing input files'
@@ -83,18 +57,8 @@ for filename in filenames:
 #   open file and read data
     print 'process file %s by %s'%(filename, scriptName)
 
-    if options.matconfig:
-        matInputFile = options.matconfig
-    else:
-        print 'you did not provide the matconfig file, i will search a matconfig with the same name as the iunput geom file'
-        if os.path.exists(os.path.splitext(filename)[0] + '.matconfig'):
-            matInputFile =  os.paht.splitext(filename)[0] + '.matconfig'
-        else:
-            print 'I can not find such matconfig file, so I will generate a new matconfig file, and the initial phase is one.'
-            matInputFile = 'None'
-
     fopen = open(filename, 'r')
-    fout  = open(os.path.splitext(filename)[0]+'_addGB_T%s.geom'%(str(thick)), 'w')
+    fout  = open(os.path.splitext(filename)[0]+'_4GettingGB.geom'%(str(thick)), 'w')
     content = fopen.readlines()
 
     nheader = int( content[0].split()[0] )
@@ -106,11 +70,6 @@ for filename in filenames:
             Ngb = microstructures if options.number else 1
             content[i] = line[0]+'\t'+str(microstructures+Ngb)+'\n'
 
-    # get the phase of grains, if no matconfig is provides, then the initial phase of all grains is one
-    if matInputFile == 'None':
-        mapGrain2Phase = np.ones(microstructures, dtype=int)
-    #else:
-
     mapGrid2Grain = np.zeros([grid[0],grid[1],grid[2]], dtype=int)
 
     # get the grain number of each grid
@@ -120,8 +79,6 @@ for filename in filenames:
         iy = i - iz*grid[1]
 
         mapGrid2Grain[:, iy, iz] = map(int, content[ii].split())
-
-    mapGrid2GrainOut = mapGrid2Grain.copy()
 
     for iz in xrange(grid[2]):
         for iy in xrange(grid[1]):
@@ -154,23 +111,11 @@ for filename in filenames:
 
                 # get the neighbor list of the consider grid
                 if locateInGB:
-                    # get the list firstly, to judge is there a phase boundary
-                    numGridOneSide = 1
-                    neighborList = getNeighborList(numGridOneSide, grid, ix, iy, iz)
-                    grainInSecondPhase = 0; numNeighGrain = 0
-                    for gz in neighborList[2]:
-                        for gy in neighborList[1]:
-                            for gx in neighborList[0]:
-                                if mapGrid2Grain[gx,gy,gz] > options.maxGrainInMatrix: grainInSecondPhase += 1
-                                numNeighGrain += 1
-
-                    # adjust the numGridOneSide, if it is phase boundary
-                    numGridOneSide = options.thick1 - 1 if grainInSecondPhase == 0 else options.thick2 - 1
                     neighborList = getNeighborList(numGridOneSide, grid, ix, iy, iz)
                     for gz in neighborList[2]:
                         for gy in neighborList[1]:
                             for gx in neighborList[0]:
-                                mapGrid2GrainOut[gx,gy,gz] = mapGrid2Grain[ix,iy,iz] + Ngb if options.number else microstructures+Ngb
+                                mapGrid2GrainOut[gx,gy,gz] = mapGrid2Grain[ix,iy,iz] + Ngb
 
   # --- output finalization --------------------------------------------------------------------------
     # write header
