@@ -4,7 +4,7 @@
 import os,sys,math,re,time,struct,string
 import damask
 from optparse import OptionParser, OptionGroup
-from myLibs import allVariables, outputPrecision
+from myLibs import allVariables, outputPrecision, delPlusZero
 
 scriptName = os.path.splitext(os.path.basename(__file__))[0]
 scriptID   = ' '.join([scriptName,damask.version])
@@ -1161,19 +1161,19 @@ for incCount,position in enumerate(locations):     # walk through locations
           for var in allVariables:
               if chunk['label'] in var:
                   writePrecision = outputPrecision[var[-1]]
-                  if writePrecision[0] != writePrecision[1]:
-                      # needs to scale the unit
+                  if writePrecision[1] != 0:
+                      # needs to scale the unit, such as transform Pa to MPa for stress
                       mappedResult[pos:pos+chunk['len']] = [i*writePrecision[1] for i in mappedResult[pos:pos+chunk['len']]]
 
                   for ip in xrange(chunk['len']):
-                      mappedResult[pos+ip] = format(mappedResult[pos+ip], writePrecision[2]%writePrecision[0]) if len(str(mappedResult[pos+ip])) > \
+                      mappedResult[pos+ip] = delPlusZero(format(mappedResult[pos+ip], writePrecision[2]%writePrecision[0])) if len(str(mappedResult[pos+ip])) > \
                       writePrecision[0]+2 else str(mappedResult[pos+ip])
                   result2str = True
 
           if not result2str:
-            mappedResult[pos:pos+chunk['len']] = map(str, mappedResult[pos:pos+chunk['len']])
+              mappedResult[pos:pos+chunk['len']] = map(str, mappedResult[pos:pos+chunk['len']])
         else:
-          mappedResult[pos:pos+chunk['len']] = map(str, mappedResult[pos:pos+chunk['len']])
+            mappedResult[pos:pos+chunk['len']] = map(str, mappedResult[pos:pos+chunk['len']])
 
         pos += chunk['len']
 

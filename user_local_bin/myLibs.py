@@ -11,6 +11,7 @@ import os,sys,math
 import numpy as np
 
 # the last one must be the name of the tuple.
+ho_all = ('ipcoords', 'ho_all')
 cr_stress = ('p', 's', 'work', 'cr_stress')
 cr_deform = ('f', 'fe', 'fp', 'e', 'ee', 'lp', 'cr_deform')
 cr_orient = ( 'eulerangles', 'grainrotation', 'cr_orient')
@@ -29,33 +30,48 @@ co_dislo =  ( 'edge_density', 'dipole_density',
               'co_dislo'
             )
 
-allVariables = [cr_stress, cr_deform, cr_orient, co_stress, co_shear, co_dislo]
-outputPrecision = {
-                   'cr_stress': [6, 1.0e-6, '.%se'],     # MPa
-                   'cr_deform': [6, 6,      '.%se'],
-                   'cr_orient': [3, 3,      '6.%sf'],
-                   'co_stress': [5, 1.0e-6, '.%se'],     # MPa
-                   'co_shear' : [5, 5,      '.%se'],
-                   'co_dislo' : [5, 1.0e-6, '.%se'],     # mm^-2
-                   'others'   : [5, 5,      '.%se']
-                 }
+allVariables = [ho_all, cr_stress, cr_deform, cr_orient, co_stress, co_shear, co_dislo]
+#outputPrecision = {
+                   #'ho_all'   : [6, 0     , '.%se'],     # MPa
+                   #'cr_stress': [6, 1.0e-6, '.%se'],     # MPa
+                   #'cr_deform': [6, 0,      '.%se'],
+                   #'cr_orient': [3, 0,      '6.%sf'],
+                   #'co_stress': [5, 1.0e-6, '.%se'],     # MPa
+                   #'co_shear' : [5, 0,      '.%se'],
+                   #'co_dislo' : [5, 1.0e-6, '.%se'],     # mm^-2
+                   #'others'   : [5, 0,      '.%se']
+                 #}
 
+outputPrecision = {
+                   'ho_all'   : [5, 0     , '.%se'],     # MPa
+                   'cr_stress': [6, 1.0e-6, '.%se'],     # MPa
+                   'cr_deform': [6, 0,      '.%se'],
+                   'cr_orient': [3, 0,      '6.%sf'],
+                   'co_stress': [5, 1.0e-6, '.%se'],     # MPa
+                   'co_shear' : [5, 0,      '.%se'],
+                   'co_dislo' : [5, 1.0e-6, '.%se'],     # mm^-2
+                   'others'   : [5, 0,      '.%se']
+                 }
 
 def delPlusZero(string):
     '''
     for a number like 1.2e+01, it is changed like 1.2e1; for a number like 1.2e-01, it is changed like 1.2e-1, can not be used in xxxxe0yy
     '''
-    if not string[-3:].isdigit():
-        if 'e+' in string:
-            return string.replace('e+0','e').replace('e+', 'e') if string[-1] != '0' else string.replace('e+00','').replace('e+0','')
+    #if not string[-3:].isdigit():
+    if len(string) > 4:
+        if 'e+00' in string[-4:] or 'e-00' in string[-4:] or 'e00' in string[-3:]:
+            return string[:string.index('e')]
+        elif 'e+0' in string:
+            return string.replace('e+0','e')
+        elif 'e+' in string:
+            return string.replace('e+','e')
         elif 'e-0' in string:
-            return string.replace('e-0', 'e-') if string[-1] != '0' else string.replace('e-00','').replace('e-0', '')
+            return string.replace('e-0', 'e-')
         elif 'e0' in string:
-            return string.replace('e0', 'e') if string[-1] != '0' else string.replace('e00','').replace('e0', '')
+            return string.replace('e0', 'e')
         else:
             return string
     else:
-        print 'I can not change the data like xxxe0yy!'
         return string
 
 def allIsDigit(line):
